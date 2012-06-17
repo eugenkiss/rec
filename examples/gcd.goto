@@ -1,0 +1,7 @@
+M1: IF x2 = 0 THEN GOTO M2;
+    t  := x2;
+    x2 := x1 % x2;
+    x1 := t;
+    GOTO M1;
+M2: x0 := x1;
+    HALT

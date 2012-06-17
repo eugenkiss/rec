@@ -1,0 +1,118 @@
+\documentclass[
+    a4paper,
+    % 10pt,
+    % DIV10,
+%   twoside,
+    oneside,
+    parskip=half,
+    toc=listof,
+    bibliography=totoc,
+    listof=totoc,
+]{scrbook}
+
+\usepackage[utf8]{inputenc}
+\usepackage[ngerman]{babel}
+
+\usepackage{url}
+\usepackage[stretch=30]{microtype}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{graphics}
+\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{array}
+\usepackage[refpages]{gloss}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{rotating}
+\usepackage{color}
+\usepackage{comment}
+
+\lstdefinelanguage{Rec}
+  {emph={if,then,else},emphstyle=\bfseries,columns=flexible,
+  literate={<=}{{$\leq$}}2 {>=}{{$\geq$}}2 {!=}{{$\neq$}}2
+  {*}{{$\cdot$}}1 {/}{{$\div$}}1
+  }
+
+\lstdefinelanguage{Goto}
+  {basicstyle=\ttfamily,
+  emph={IF,THEN,ELSE,END,GOTO,PEEK,PUSH,POP,RETURN,CALL},columns=flexible,
+  literate={<=}{{$\leq$}}2 {>=}{{$\geq$}}2 {!=}{{$\neq$}}2
+  {*}{{$\cdot$}}1 {/}{{$\div$}}1
+  }
+
+\newenvironment{myindent}[1]%
+ {\begin{list}{}%
+         {\setlength{\leftmargin}{#1}}%
+         \item[]%
+ }
+ {\end{list}}
+
+%include lhs2tex.fmt
+\begin{document}
+\chapter{Quellcode}
+
+Einführung erklüarung...
+
+Fokus der Kommentare liegt hier ofensichtlich mehr auf der konkreten
+Implementierung als auf der Hintergrundkonzepte...
+
+Quellcode wurde im Literate Programming Stil verfasst.
+
+GHC Version, cabal file, folder aufbau, tests...
+
+Es wird davon ausgegangen, dass der Leser ein wenig vertraut mit Haskell ist.
+
+Bei der Darstellugn von Quellcode werden einige Freiheiten verwendet, sodass er
+ästhetischer ist ...
+
+Die Ordnerstruktur des Projekts sieht folgendermaßen aus\footnote{Unwichtige
+Dateien sind aus Gründen der Prägnanz nicht aufgelistet.}:
+%
+\begin{myindent}{3mm}
+\begin{verbatim}
+|-- recgoto.cabal
+|-- Setup.hs
+|-- src
+|   |-- Rec.lhs
+|   |-- Goto.lhs
+|   |-- GotoToRec.lhs
+|   |-- Util.lhs
+|   `-- cmdtools
+|       |-- RecCmdTool.lhs
+|       `-- GotoCmdTool.lhs
+`-- examples
+    |...
+\end{verbatim}
+\end{myindent}
+%
+@recgoto.cabal@ und @Setup.hs@ werden für die Installation des Projektes
+benötigt. Die Installtion kann mit dem Kommandozeilenbefehl @cabal install@ im
+Projektordner geschehen. Dabei werden die Kommandozeilenprogramme @rec@ und
+@goto@ installiert mit denen unter anderem entsprechende Programmtexte
+ausgeführt werden können. Im Ordner @examples@ befinden sich eingie
+Beispielprogrammtexte mit denen die Kommandozeilenprogramme ausprobiert werden
+können.  In dem Ordner @src@ befindet
+sich der Quellcode dieses Projekts.
+
+Im Folgenden wird zuerst der Quellcode mitsamt Kommentaren der Dateien
+@Rec.lhs@ und @RecCmdTool.lhs@ aufgeführt, gefolgt von @Goto.lhs@,
+@GotoToRec.lhs@\footnote{Die Aufspaltung in eine @Goto.lhs@ und eine
+@GotoToRec.lhs@ Datei hat rein technische Gründe. Und zwar kann der GHC
+Compiler nicht mit zyklischen Modulen umgehen auch wenn die Haskell
+Spezifikation dieses erlaubt.} und @GotoCmdTool.lhs@. Schliesslich wird noch
+@Util.lhs@ angehangen.
+
+%include src/Rec.lhs
+
+%include src/cmdtools/RecCmdTool.lhs
+
+%include src/Goto.lhs
+
+%include src/GotoToRec.lhs
+
+%include src/cmdtools/GotoCmdTool.lhs
+
+% include src/Util.lhs
+
+\end{document}

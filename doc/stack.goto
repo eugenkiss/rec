@@ -1,0 +1,204 @@
+/*
+We have a stack s and a stack pointer sp that are both natural numbers. The
+structure of s can be pictured as:
+
+    #n1#n2...#nn
+               ^
+
+where each number ni is octal, # is encoded as 9 and sp is the number of items
+in the stack decreased by 1. This another visualisation is:
+
+    9oct(n1)9oct(n2)...9oct(nn)
+
+A concrete manifestation of a stack after the operations PUSH(1), PUSH(10)
+and PUSH(24) thus is:
+
+   91912930
+
+In what follows, the idea for the implementation of stack operations in Goto is
+presented.
+
+PUSH(c):
+- oc := dec->oct(c)
+- dc := digs(oc)
+- s  := s * 10^(dc+1) + 9 * 10^(dc) + oc
+- sp := sp + 1
+
+POP:
+- x0 := PEEK(0)
+- d  := digs(x0)
+- s  := s DIV (10^(d+1))
+- sp := sp - 1
+
+PEEK(n):
+- skip digs as long as n # were found, be p now on the first digit of the nth
+  number
+- Go thorough each digit until the next # and construct c.
+- x0 := oct->dec(c)
+*/
+
+/*
+c := 10;
+// oct->dec(c)
+dec_c := 0;
+count := 0;
+M1:
+IF c > 0 THEN
+  digit := c % 10;
+  dec_c := dec_c + digit * 8^count;
+  count := count + 1;
+  c := c / 10;
+  GOTO M1
+END;
+x0 := dec_c;
+//HALT;
+
+c := 10;
+// dec->oct(c)
+oct_c := 0;
+count := 0;
+M3:
+IF c > 0 THEN
+  digit := c % 8;
+  oct_c := oct_c + digit * 10^count;
+  count := count + 1;
+  c := c / 8;
+  GOTO M3
+END;
+x0 := oct_c;
+//HALT
+*/
+
+
+/*
+c := 91230000000000000000000000000000000000000000;
+// digs(c)
+counter := 0;
+M5:
+IF c > 0 THEN
+  counter := counter + 1;
+  c := c / 10;
+  GOTO M5
+END;
+x0 := counter;
+//HALT
+*/
+
+
+s := 0;
+sp := 0;
+
+c := 1;
+// PUSH(1)
+  // dec->oct(c)
+  oct_c := 0;
+  count := 0;
+  M3:
+  IF c > 0 THEN
+    digit := c % 8;
+    oct_c := oct_c + digit * 10^count;
+    count := count + 1;
+    c := c / 8;
+    GOTO M3
+  END;
+
+
+  // digs(oct_c)
+  c := oct_c;
+  digits := 0;
+  M5:
+  IF c > 0 THEN
+    digits := digits + 1;
+    c := c / 10;
+    GOTO M5
+  END;
+
+  // Update stack
+  s  := s * 10^(digits+1) + 9 * 10^(digits) + oct_c;
+  sp := sp + 1;
+
+c := 10;
+// PUSH(10)
+  // dec->oct(c)
+  oct_c := 0;
+  count := 0;
+  M1:
+  IF c > 0 THEN
+    digit := c % 8;
+    oct_c := oct_c + digit * 10^count;
+    count := count + 1;
+    c := c / 8;
+    GOTO M1
+  END;
+
+
+  // digs(oct_c)
+  c := oct_c;
+  digits := 0;
+  M2:
+  IF c > 0 THEN
+    digits := digits + 1;
+    c := c / 10;
+    GOTO M2
+  END;
+
+  // Update stack
+  s  := s * 10^(digits+1) + 9 * 10^(digits) + oct_c;
+  sp := sp + 1;
+
+
+c := 24;
+// PUSH(10)
+  // dec->oct(c)
+  oct_c := 0;
+  count := 0;
+  M4:
+  IF c > 0 THEN
+    digit := c % 8;
+    oct_c := oct_c + digit * 10^count;
+    count := count + 1;
+    c := c / 8;
+    GOTO M4
+  END;
+
+
+  // digs(oct_c)
+  c := oct_c;
+  digits := 0;
+  M6:
+  IF c > 0 THEN
+    digits := digits + 1;
+    c := c / 10;
+    GOTO M6
+  END;
+
+  // Update stack
+  s  := s * 10^(digits+1) + 9 * 10^(digits) + oct_c;
+  sp := sp + 1;
+
+
+
+// PEEK(1)
+
+found := 0;
+s0 := s;
+M7:
+IF found < 1 THEN
+  digit := s0 % 10;
+  IF digit = 9 THEN found := found + 1 END;
+  s0 := s0 / 10;
+  GOTO M7
+END;
+
+dec_c := 0;
+count := 0;
+M8:
+digit := s0 % 10;
+IF digit != 9 THEN
+  dec_c := dec_c + digit * 8^count;
+  count := count + 1;
+  s0 := s0 / 10;
+  GOTO M8
+END;
+
+x0 := dec_c

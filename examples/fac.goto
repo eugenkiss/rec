@@ -1,0 +1,6 @@
+    x0 := 1;
+M1: IF x1 = 0 THEN GOTO M2 END;
+    x0 := x0 * x1;
+    x1 := x1 - 1;
+    GOTO M1;
+M2: HALT
