@@ -61,6 +61,11 @@
 >   | Peek VId AExp -- save the ith (i is determined from arith exp) item in the stack into a variable
 >   | Call LId Int
 >   | Return
+>   -- closures
+>   | PushHeap AExp
+>   | PeekHeap VId AExp
+>   | Closurize Int [AExp]
+>   | CallClosure AExp Int
 >   deriving Eq
 >
 > data AExp
@@ -103,7 +108,7 @@
 > pprint' (IfElse b p1 p2) =
 >     text "IF" <+> text (show b) <+> text "THEN" $+$
 >       nest 2 (pprint' p1)                       $+$
->     nest 0 (text "ELSE")                     $+$
+>     nest 0 (text "ELSE")                        $+$
 >       nest 2 (pprint' p2)                       $+$
 >     nest 0 (text "END")
 > pprint' (Goto l)    = text "GOTO" <+> text l
@@ -116,6 +121,13 @@
 > pprint' (Peek v a) = text v <+> text ":= PEEK" <+> text (show a)
 > pprint' (Call l n) = text "CALL" <+> text l PP.<> text "," <+> text (show n)
 > pprint' (Return)   = text "RETURN"
+>
+> pprint' (PushHeap a)   = text "PUSH_HEAP" <+> text (show a)
+> pprint' (PeekHeap v a) = text v <+> text ":= PEEK_HEAP" <+> text (show a)
+> pprint' (Closurize p args)
+>   = text "CLOSURIZE" <+> text (show p) <+> hcat (punctuate comma $ map (text . show) args)
+> pprint' (CallClosure a n)
+>   = text "CALL_CLOSURE" <+> text (show a) PP.<> text "," <+> text (show n)
 
 > instance Show AExp where
 >     show (Var v)       = v
@@ -152,6 +164,7 @@
 > lexer = Token.makeTokenParser gotoDef
 >
 > semiSep1   = Token.semiSep1   lexer
+> commaSep1  = Token.commaSep1  lexer
 > parens     = Token.parens     lexer
 > whiteSpace = Token.whiteSpace lexer
 > identifier = Token.identifier lexer
@@ -191,6 +204,10 @@ Carry along a list of labels to check if there aren't any duplicates.
 >   , pLabeledOrNot pPeek
 >   , pLabeledOrNot pCall
 >   , pLabeledOrNot pReturn
+>   , pLabeledOrNot pPushHeap
+>   , pLabeledOrNot pPeekHeap
+>   , pLabeledOrNot pCallClosure
+>   , pLabeledOrNot pClosurize
 >   , pLabeledOrNot pAssign
 >   ]
 
@@ -219,6 +236,41 @@ Parse a statement that is preceded by a label.
 
 TODO
 
+> pCallClosure :: Parser Program
+> pCallClosure
+>   = do reserved "CALL_CLOSURE"
+>        aexp <- pAExp
+>        _ <- symbol ","
+>        n <- integer
+>        return $ CallClosure aexp (fromInteger n)
+>
+> pClosurize :: Parser Program
+> pClosurize
+>   =    do { reserved "CLOSURIZE"
+>           ; p <- integer
+>           ; return $ Closurize (fromInteger p) []
+>           }
+>   <|>  do { reserved "CLOSURIZE"
+>           ; p <- integer
+>           ; _ <- symbol ","
+>           ; args <- commaSep1 pAExp
+>           ; return $ Closurize (fromInteger p) args
+>           }
+>
+> pPushHeap :: Parser Program
+> pPushHeap = do
+>   reserved "PUSH_HEAP"
+>   aexp <- pAExp
+>   return $ PushHeap aexp
+>
+> pPeekHeap :: Parser Program
+> pPeekHeap = do
+>   v <- identifier
+>   reservedOp ":="
+>   reserved "PEEK_HEAP"
+>   aexp <- pAExp
+>   return $ PeekHeap v aexp
+>
 > pReturn :: Parser Program
 > pReturn = do
 >   reserved "RETURN"
@@ -705,6 +757,20 @@ Here come the augmented constructors.
 >        <> Assign t aexp
 >        <> Peek x0 (Var t)
 
+>   go p@(PushHeap (Var _)) = return (p <> Assign "hp" (AOp "+" (Var "hp") (Num 1)))
+>   go (PushHeap aexp) = do
+>     t <- newVId
+>     go $  mempty
+>        <> Assign t aexp
+>        <> PushHeap (Var t)
+
+>   go p@(PeekHeap _ (Var _)) = return p
+>   go (PeekHeap x0 aexp) = do
+>     t <- newVId
+>     go $  mempty
+>        <> Assign t aexp
+>        <> PeekHeap x0 (Var t)
+
 >   go (Call fn n) = do
 >     r <- newRId
 >     returnVal <- newVId
@@ -788,6 +854,10 @@ names.
 >   go (Peek v aexp)       = v : getVIdsInAExp aexp
 >   go (Call _ _)          = []
 >   go (Return)            = []
+>   go (PushHeap aexp)     = getVIdsInAExp aexp
+>   go (PeekHeap v aexp)   = v : getVIdsInAExp aexp
+>   go (Closurize _ args)  = concatMap getVIdsInAExp args
+>   go (CallClosure aexp _) = getVIdsInAExp aexp
 >   go (Label _ p)         = go p
 >   go (Seq ps)            = concatMap go ps
 
@@ -830,6 +900,10 @@ AST.
 >   Peek v aexp       -> Peek (r v) (rAExp aexp)
 >   Call f n          -> Call f n
 >   Return            -> Return
+>   PushHeap aexp     -> PushHeap (rAExp aexp)
+>   PeekHeap v aexp   -> PeekHeap (r v) (rAExp aexp)
+>   Closurize p args  -> Closurize p (map rAExp args)
+>   CallClosure aexp n -> CallClosure (rAExp aexp) n
 >   Label l p         -> Label l (rVId p)
 >   Seq ps            -> Seq (map rVId ps)
 >   where
@@ -910,6 +984,10 @@ Analyze the AST and return a list without duplicates of all used label names.
 >   go (Peek _ _)       = []
 >   go (Call l _)       = [l]
 >   go (Return)         = []
+>   go (PushHeap _)     = []
+>   go (PeekHeap _ _)   = []
+>   go (Closurize _ _)  = []
+>   go (CallClosure _ _) = []
 
 
 During transformation some "NOPs" (like "x0 := x0 + 0") are used here and
@@ -1014,7 +1092,7 @@ Unwrap the singleton sequence.
 > type Index = Integer
 
 > type VarEnv s = STRef s (M.Map Index (STRef s Integer))
-> type Env s = (VarEnv s, [Integer])
+> type Env s = (VarEnv s, [Integer], [Integer])
 
 > nullEnv :: ST s (VarEnv s)
 > nullEnv = newSTRef M.empty
@@ -1048,46 +1126,54 @@ and return the value of 'x0'.
 >   let statsArr = V.fromList stats
 >   forM_ [1..length args] $ \i ->
 >       setVar envRef (toInteger i) (args !! (i-1))
->   eval' (envRef, []) statsArr 1
+>   eval' (envRef, [], []) statsArr 1
 >   getVar envRef 0
 
 > eval' :: Env s -> V.Vector Program -> Integer -> ST s ()
-> eval' (env, stack) arr index = do
+> eval' (env, stack, heap) arr index = do
 >   let stmnt = arr ! ((fromInteger index) - 1)
 >   case stmnt of
 >     Label (_:l) (Push (Var (_:j))) -> do
 >       xj <- getVar env (read j)
->       eval' (env, xj:stack) arr $ succ (read l)
+>       eval' (env, xj:stack, heap) arr $ succ (read l)
 >     Label (_:l) (Pop (_:i)) -> do
 >       let (top:rest) = stack
 >       setVar env (read i) $! top
->       eval' (env, rest) arr $ succ (read l)
+>       eval' (env, rest, heap) arr $ succ (read l)
 >     Label (_:l) (Peek (_:i) (Var (_:j))) -> do
 >       let sp = genericLength stack
 >       xj <- getVar env (read j)
 >       setVar env (read i) $! stack !! (fromIntegral (sp - xj))
->       eval' (env, stack) arr $ succ (read l)
+>       eval' (env, stack, heap) arr $ succ (read l)
+>     Label (_:l) (PushHeap (Var (_:j))) -> do
+>       xj <- getVar env (read j)
+>       eval' (env, stack, xj:heap) arr $ succ (read l)
+>     Label (_:l) (PeekHeap (_:i) (Var (_:j))) -> do
+>       let hp = genericLength heap
+>       xj <- getVar env (read j)
+>       setVar env (read i) $! heap !! (fromIntegral (hp - xj))
+>       eval' (env, stack, heap) arr $ succ (read l)
 >     Label (_:l) (Assign (_:i) (AOp op (Var (_:j)) (Num n))) -> do
 >       xj <- getVar env (read j)
 >       setVar env (read i) $! toNativeAOp op xj n
->       eval' (env, stack) arr $ succ (read l)
+>       eval' (env, stack, heap) arr $ succ (read l)
 >     Label (_:l) (Assign (_:i) (AOp op (Var (_:j)) (Var (_:k)))) -> do
 >       xj <- getVar env (read j)
 >       xk <- getVar env (read k)
 >       setVar env (read i) $! toNativeAOp op xj xk
->       eval' (env, stack) arr $ succ (read l)
+>       eval' (env, stack, heap) arr $ succ (read l)
 >     Label (_:l1) (If (ROp op (Var (_:i)) (Num n)) (Goto (_:l2))) -> do
 >       xi <- getVar env (read i)
 >       if toNativeROp op xi n
->          then eval' (env, stack) arr (read l2)
->          else eval' (env, stack) arr $ succ (read l1)
+>          then eval' (env, stack, heap) arr (read l2)
+>          else eval' (env, stack, heap) arr $ succ (read l1)
 >     Label (_:l1) (If (ROp op (Var (_:i)) (Var (_:j))) (Goto (_:l2))) -> do
 >       xi <- getVar env (read i)
 >       xj <- getVar env (read j)
 >       if toNativeROp op xi xj
->          then eval' (env, stack) arr (read l2)
->          else eval' (env, stack) arr $ succ (read l1)
->     Label _ (Goto (_:l)) -> eval' (env, stack) arr (read l)
+>          then eval' (env, stack, heap) arr (read l2)
+>          else eval' (env, stack, heap) arr $ succ (read l1)
+>     Label _ (Goto (_:l)) -> eval' (env, stack, heap) arr (read l)
 >     Label _ Halt -> return ()
 >     _ -> error "Impossible! Desugaring before evaluation not sufficient!"
 

@@ -40,7 +40,7 @@ Da im Quellcode teilweise auf Bibliotheken und Hilfsfunktionen des Haskell
 
 > import Control.Monad
 > import Data.Monoid
-> import Data.List ((\\), intersect, intercalate, nub)
+> import Data.List ((\\), intersect, intercalate, nub, elemIndex)
 > import Data.Maybe (fromJust)
 > import qualified Data.Map as M
 >
@@ -148,8 +148,8 @@ sich jeweils rechts vom `\lstinline[language=Rec]$:=$` einer Definition
 befindet:
 
 > data Exp
->   = Var Name
->   | Num Integer
+>   = Num Integer
+>   | Var Name
 >   | Ap Name [Exp]
 >   | Lam Name Exp
 >   | If Exp Exp Exp
@@ -583,8 +583,15 @@ selbe leisten würden.
 > genCallSequence fnNames paramMap (Num n : rest)
 >   =  G.Push (G.Num n)
 >   <> genCallSequence fnNames paramMap rest
+
+Assoziiere Nummern zu Funktionsdefinitionen, d.h. Zeiger auf
+Funktionsdefinitionen, sodass im GOTO-Programm anhand dieser Nummer auf eine
+bestimmte Funktionsdefinition gesprungen werden kann.
+
 > genCallSequence fnNames paramMap (Var a : rest)
->   =  G.Push (G.Var $ lookup' a paramMap)
+>   =  case M.lookup a paramMap of
+>        Just x  -> G.Push $ G.Var x
+>        Nothing -> G.Push $ G.Num $ toInteger $ fromJust $ elemIndex a fnNames
 >   <> genCallSequence fnNames paramMap rest
 
 Die Übersetzung atomarer Ausdrücke gestaltet sich problemlos. Bei der
