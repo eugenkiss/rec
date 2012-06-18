@@ -9,6 +9,7 @@
 >
 > tests = [ testCase "rec/parsing1" parsing1
 >         , testCase "rec/parsing2" parsing2
+>         , testCase "rec/parsing3" parsing3
 >         , testCase "rec/basic1" basic1
 >         , testCase "rec/basic2" basic2
 >         , testCase "rec/basic3" basic3
@@ -32,6 +33,10 @@
 >         , testCase "rec/arith3" arith3
 >         , testCase "rec/arith4" arith4
 >         , testCase "rec/arith5" arith5
+>         , testCase "rec/lambda1" lambda1
+>         , testCase "rec/lambda2" lambda2
+>         , testCase "rec/lambda3" lambda3
+>         , testCase "rec/lambda4" lambda4
 >         ]
 >
 > parsing1 = parse' p @?= e
@@ -49,6 +54,14 @@
 >     [ ("main", [],         Ap "+" [Num 1, Ap "add" [Num 2, Ap "add" [Num 2, Num 10]]])
 >     , ("add",  ["x", "y"], Ap "+" [Var "x", Var "y"])
 >     ]
+>
+> parsing3 = parse' p @?= e
+>   where
+>   p = "main() := \\x. x + x"
+>   e =
+>     [ ("main",   [],    Lam "x" (Ap "+" [Var "x", Var "x"]))
+>     ]
+>
 >
 > -- Evaluation
 > -------------
@@ -153,3 +166,33 @@
 >   where
 >   p =  "main(a) := fib(a);"
 >     ++ "fib(n) := if n = 0 then 0 else (if n = 1 then 1 else (fib(n-1) + fib(n-2)))"
+>
+> lambda1 = run' p [] @?= 3
+>   where
+>   p =  "main(a) := twice(succ, 1);"
+>     ++ "twice(f, x) := f(f(x));"
+>     ++ "succ(x) := x + 1"
+>
+> lambda2 = run' p [] @?= 3
+>   where
+>   p =  "main(a) := twice(succ)(1);"
+>     ++ "twice(f) := \\x. f(f(x));"
+>     ++ "succ(x) := x + 1"
+>
+> lambda3 = run' p [] @?= 9
+>   where
+>   p =  "main(a) := mkadder(2)(1) + mkadder(3)(3);"
+>     ++ "mkadder(x) := \\y. x + y"
+>
+> lambda4 = run' p [] @?= 3
+>   where
+>   p =  "main(a) := I(succ)(2)"
+>     ++ "I(x) := x;"
+>     ++ "succ(x) := x + 1"
+>
+> -- Überlege ob das erlaubt sein soll (anonymous lambdas)
+> -- lambda5 = run' p [1] @?= 2
+> --  where
+> --   p =  "main(a) := (\\x. x + x)(1)"
+>
+> -- TODO: Noch mehr lambda tests

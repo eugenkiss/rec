@@ -48,12 +48,10 @@ Da im Quellcode teilweise auf Bibliotheken und Hilfsfunktionen des Haskell
 > import Text.Parsec.Expr
 > import Text.Parsec.String
 > import qualified Text.Parsec.Token as Token
-> import qualified Text.Parsec as Parsec
 >
 > import Util
 > import qualified Goto as G
 >
-> (<>) = mappend
 > lookup' k map = fromJust $ M.lookup k map
 
 
@@ -153,6 +151,7 @@ befindet:
 >   = Var Name
 >   | Num Integer
 >   | Ap Name [Exp]
+>   | Lam Name Exp
 >   | If Exp Exp Exp
 >   deriving (Eq, Show)
 
@@ -277,6 +276,8 @@ schon einen Pretty Printer für \Rec Ausdrücke angeben:
 >   space op  = " " ++ op ++ " "
 > pprExp (Ap f es)
 >   = f ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
+> pprExp (Lam x e)
+>   = "\\" ++ x ++ ". " ++ pprExp e
 > pprExp (If e1 e2 e3)
 >   = "if " ++ pprExp e1
 >           ++ " then " ++ pprExp e2
@@ -346,6 +347,7 @@ beschrieben, sowie eine Reihe Hilfsparser definiert:
 > identifier = Token.identifier lexer
 > natural    = Token.natural lexer
 > whiteSpace = Token.whiteSpace lexer
+> symbol     = Token.symbol lexer
 
 Kommen wir nun zum eigentlichen Parsen. Die Funktion |parse| erhält als Eingabe
 den Programmtext und liefert entweder den entsprechenden Wert vom Typ |Program|
@@ -430,10 +432,17 @@ uns zudem an die Operatortabelle von \Rec$\!\!$; diese kann ziemlich direkt
 >     ]
 >   op name = Infix (reservedOp name >> return (\x y -> Ap name [x, y]))
 >
-> pTerm = try pAp <|> try pIf <|> pVar <|> pNum <|> parens pExp <?> "term"
+> pTerm = pLam <|> try pAp <|> try pIf <|> pVar <|> pNum <|> parens pExp <?> "term"
 
 Hier nun noch die restlichen Parser:
 
+> pLam = do
+>   _ <- symbol "\\"
+>   x <- identifier
+>   _ <- symbol "."
+>   e <- pExp
+>   return $ Lam x e
+>
 > pAp = do
 >   fn <- identifier
 >   args <- parens $ commaSep pExp
@@ -487,6 +496,8 @@ wirklich benutzt worden sind.
 > getCalledFnNames (Var _:rest) = getCalledFnNames rest
 > getCalledFnNames (Ap fn args:rest)
 >   = fn : getCalledFnNames args ++ getCalledFnNames rest
+> getCalledFnNames (Lam _ e:rest)
+>   = getCalledFnNames [e] ++ getCalledFnNames rest
 > getCalledFnNames (If e1 e2 e3:rest)
 >   = getCalledFnNames [e1, e2, e3] ++ getCalledFnNames rest
 

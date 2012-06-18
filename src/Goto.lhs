@@ -43,8 +43,6 @@
 > import Text.ParserCombinators.Parsec.Expr
 >
 > import Util
->
-> (<>) = mappend
 
 
 \subsection{Abstrakte Syntax}
