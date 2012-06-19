@@ -771,6 +771,35 @@ Here come the augmented constructors.
 >        <> Assign t aexp
 >        <> PeekHeap x0 (Var t)
 
+>   go (Closurize p args) = do
+>     go $  mempty
+>        <> PushHeap (Num $ toInteger $ p)
+>        <> Push (Var "hp")
+>        <> (Seq $ map PushHeap args)
+
+>   go (CallClosure aexp n) = do
+>     r <- newRId
+>     returnVal <- newVId
+>     temp <- newVId
+>     pcVal <- (length . _rIdsUsed) <$> get
+>     go $  mempty
+>        <> Assign temp (Num 0) -- side effects TODO: I can't really explain, but without this some tests break...
+>        <> Push (Var "fp")
+>        <> Assign "fp" (Var "sp")
+>        <> Push (Num $ toInteger pcVal)
+>        <> PeekHeap "cp" aexp -- get pointer to closure code
+>        <> Goto "lamret"
+>        <> Label r
+>           (  Pop returnVal
+>           <> Pop temp -- old return adress
+>           <> Pop "fp" -- reassign old fp
+>           <> mkPopSequence n temp -- pop old args + ret addr
+>          -- <> Assign "fp" (Var "sp") -- reset fp!
+>           <> Push (Var returnVal)
+>           )
+>     where
+>     mkPopSequence n t = Seq $ replicate n (Pop t)
+
 >   go (Call fn n) = do
 >     r <- newRId
 >     returnVal <- newVId
@@ -794,7 +823,7 @@ Here come the augmented constructors.
 >     mkPopSequence n t = Seq $ replicate n (Pop t)
 
 >   go Return = do
->     ret <- _returnSectionId  <$> get
+>     ret <- _returnSectionId <$> get
 >     go $  Peek "pc" (AOp "+" (Var "fp") (Num 1))
 >        <> Goto ret
 
@@ -1044,6 +1073,8 @@ but do not consider label names that are only used in a goto statement.
 >   go (Push _)         = []
 >   go (Pop _)          = []
 >   go (Peek _ _)       = []
+>   go (PushHeap _)     = []
+>   go (PeekHeap _ _)   = []
 >   go (If _ p)         = go p
 >   go (IfElse _ p1 p2) = go p1 ++ go p2
 >   go (Label l p)      = l : go p

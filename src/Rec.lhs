@@ -39,6 +39,7 @@ Da im Quellcode teilweise auf Bibliotheken und Hilfsfunktionen des Haskell
 Ökosystems zugegriffen wird, müssen diese natürlich vorher importiert werden:
 
 > import Control.Monad
+> import Control.Monad.State
 > import Data.Monoid
 > import Data.List ((\\), intersect, intercalate, nub, elemIndex)
 > import Data.Maybe (fromJust)
@@ -564,6 +565,10 @@ entsprechenden Goto Variablen `\lstinline[language=Goto]$a1,a2,...$` zuordnen.
 > mkParamMap :: [Name] -> ParamMap
 > mkParamMap args = M.fromList $ zip args $ map ("a"++) $ map show [1..]
 
+> type LamList = [Exp]
+
+TODO: genCallSequence zu genExpSequence
+
 Nun widmen wir uns dem Kern der Übersetzung; der Übersetzung eines \Rec
 Ausdrucks. Die ersten beiden Parameter von |genCallSequence| sind eine Liste
 der im Programm definierten Funktionsnamen und die Abbildung von Parametern der
@@ -611,8 +616,16 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 
 > genCallSequence fnNames paramMap (Ap fn args : rest)
 >   =  genCallSequence fnNames paramMap args
->   <> G.Call (labelizeIfOp fnNames fn) (length args)
+>   <> case M.lookup fn paramMap of
+>        Just a  -> G.CallClosure (G.Var a) (length args)
+>        Nothing -> G.Call (labelizeIfOp fnNames fn) (length args)
 >   <> genArgSequence (M.size paramMap) -- reset args
+>   <> genCallSequence fnNames paramMap rest
+
+TODO: Closurize soll nummer entsprechender lambda erhalten
+
+> genCallSequence fnNames paramMap (Lam x e : rest)
+>   =  G.Closurize 1 []
 >   <> genCallSequence fnNames paramMap rest
 
 Zur Erinnerung: \emph{false} wird in \Rec als $0$ kodiert und alle anderen
@@ -798,12 +811,68 @@ Goto Programm übersetzt:
 
 > genGoto :: Program -> G.Program
 > genGoto defs = mempty
->  <> genExtArgsSection defs
->  <> G.Seq (map (genDefSection defNames) defs)
->  <> genOpSection defNames defRhss
->  where
->  defNames = getDefNames defs
->  defRhss  = getDefRhss  defs
+>   <> genExtArgsSection defs
+>   <> G.Seq (map (genDefSection defNames) defs)
+>   <> genOpSection defNames defRhss
+>   <> evalState (genLamSection defs) 1
+>   <> (G.Label "lamret" $ evalState (genLamRetSection defRhss) 1)
+>   where
+>   defNames = getDefNames defs
+>   defRhss  = getDefRhss  defs
+
+> genLamSection [] = return mempty
+> genLamSection ((_, _, Num _) : rest)
+>   = genLamSection rest
+> genLamSection ((_, _, Var _) : rest)
+>   = genLamSection rest
+> genLamSection ((_, topargs, Ap _ args) : rest)
+>   = do t1 <- genLamSection $ map (\x->("dontcare", topargs, x)) args
+>        t2 <- genLamSection rest
+>        return $ t1 <> t2
+> genLamSection ((_, topargs, If e1 e2 e3) : rest)
+>   = do t1 <- genLamSection [("dontcare", topargs, e1)]
+>        t2 <- genLamSection [("dontcare", topargs, e2)]
+>        t3 <- genLamSection [("dontcare", topargs, e3)]
+>        t4 <- genLamSection rest
+>        return $ t1 <> t2 <> t3 <> t4
+> genLamSection ((_, topargs, Lam args e) : rest)
+>   = do i <- get
+>        put (i + 1)
+>        let t1 = G.Label ("lambda" ++ show i)
+>                 $  mempty
+>                 <> genArgSequence (length args)
+>                 <> genCallSequence [] (mkParamMap [args]) [e]
+>                 <> G.Return
+>        t2 <- genLamSection rest
+>        return $  mempty
+>               <> t1
+>               <> t2
+
+> genLamRetSection [] = return mempty
+> genLamRetSection (Num _ : rest)
+>   = genLamRetSection rest
+> genLamRetSection (Var _ : rest)
+>   = genLamRetSection rest
+> genLamRetSection (Ap _ args : rest)
+>   = do t1 <- genLamRetSection args
+>        t2 <- genLamRetSection rest
+>        return $ t1 <> t2
+> genLamRetSection (If e1 e2 e3 : rest)
+>   = do t1 <- genLamRetSection [e1]
+>        t2 <- genLamRetSection [e2]
+>        t3 <- genLamRetSection [e3]
+>        t4 <- genLamRetSection rest
+>        return $ t1 <> t2 <> t3 <> t4
+> genLamRetSection (Lam _ e : rest)
+>   = do i <- get
+>        put (i + 1)
+>        t1 <- genLamRetSection [e]
+>        t2 <- genLamRetSection rest
+>        return $  mempty
+>               <> (G.If (G.ROp "=" (G.Var "cp") (G.Num i)) (G.Goto ("lambda" ++ show i)))
+>               <> t1
+>               <> t2
+
 
 Zum Abschluss wollen wir uns die vollständige Übersetzung nach Goto des
 folgenden \Rec Programms anschauen:
