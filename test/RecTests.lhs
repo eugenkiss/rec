@@ -37,6 +37,8 @@
 >         , testCase "rec/lambda2" lambda2
 >         , testCase "rec/lambda3" lambda3
 >         , testCase "rec/lambda4" lambda4
+>         , testCase "rec/lambda5" lambda5
+>         , testCase "rec/lambda6" lambda6
 >         ]
 >
 > parsing1 = parse' p @?= e
@@ -59,7 +61,7 @@
 >   where
 >   p = "main() := \\x. x + x"
 >   e =
->     [ ("main",   [],    Lam "x" (Ap "+" [Var "x", Var "x"]))
+>     [ ("main",   [],    Lam 1 "x" (Ap "+" [Var "x", Var "x"]))
 >     ]
 >
 >
@@ -167,26 +169,35 @@
 >   p =  "main(a) := fib(a);"
 >     ++ "fib(n) := if n = 0 then 0 else (if n = 1 then 1 else (fib(n-1) + fib(n-2)))"
 >
-> lambda1 = run' p [] @?= 3
+> lambda1 = run' p [] @?= 30
 >   where
->   p =  "main(a) := twice(succ, 1);"
->     ++ "twice(f, x) := f(f(x));"
->     ++ "succ(x) := x + 1"
+>   p =  "compose(f, g, x) := f(g(x));"
+>     ++ "main() := compose(\\x. x + 10, \\x. x * 10, 2)"
 >
 > lambda2 = run' p [] @?= 3
 >   where
->   p =  "main(a) := twice(succ)(1);"
+>   p =  "main(a) := twice(\\x. succ(x), 1);"
+>     ++ "twice(f, x) := f(f(x));"
+>     ++ "succ(x) := x + 1"
+>
+> lambda3 = run' p [] @?= 3
+>   where
+>   p =  "main() := (\\x. x + 1)(2)"
+>
+> lambda4 = run' p [] @?= 3
+>   where
+>   p =  "main(a) := twice(\\x. succ(x))(1);"
 >     ++ "twice(f) := \\x. f(f(x));"
 >     ++ "succ(x) := x + 1"
 >
-> lambda3 = run' p [] @?= 9
+> lambda5 = run' p [] @?= 9
 >   where
 >   p =  "main(a) := mkadder(2)(1) + mkadder(3)(3);"
 >     ++ "mkadder(x) := \\y. x + y"
 >
-> lambda4 = run' p [] @?= 3
+> lambda6 = run' p [] @?= 3
 >   where
->   p =  "main(a) := I(succ)(2)"
+>   p =  "main(a) := I(\\x. succ(x))(2)"
 >     ++ "I(x) := x;"
 >     ++ "succ(x) := x + 1"
 >

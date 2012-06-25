@@ -39,16 +39,14 @@ Da im Quellcode teilweise auf Bibliotheken und Hilfsfunktionen des Haskell
 Ökosystems zugegriffen wird, müssen diese natürlich vorher importiert werden:
 
 > import Control.Monad
-> import Control.Monad.State
 > import Data.Monoid
 > import Data.List ((\\), intersect, intercalate, nub, elemIndex)
 > import Data.Maybe (fromJust)
 > import qualified Data.Map as M
 >
-> import Text.Parsec ((<|>), (<?>), try, oneOf, letter, alphaNum)
-> import Text.Parsec.Expr
-> import Text.Parsec.String
-> import qualified Text.Parsec.Token as Token
+> import qualified Text.ParserCombinators.Parsec.Token as Token
+> import Text.ParserCombinators.Parsec hiding (Parser, State, labels, parse)
+> import Text.ParserCombinators.Parsec.Expr
 >
 > import Util
 > import qualified Goto as G
@@ -152,7 +150,7 @@ befindet:
 >   = Num Integer
 >   | Var Name
 >   | Ap Name [Exp]
->   | Lam Name Exp
+>   | Lam Int Name Exp
 >   | If Exp Exp Exp
 >   deriving (Eq, Show)
 
@@ -277,7 +275,7 @@ schon einen Pretty Printer für \Rec Ausdrücke angeben:
 >   space op  = " " ++ op ++ " "
 > pprExp (Ap f es)
 >   = f ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
-> pprExp (Lam x e)
+> pprExp (Lam _ x e)
 >   = "\\" ++ x ++ ". " ++ pprExp e
 > pprExp (If e1 e2 e3)
 >   = "if " ++ pprExp e1
@@ -322,7 +320,6 @@ Stattdessen greifen wir auf einige komfortable Hilfskonstrukte von Parsec
 zurück. Im Folgenden wird ein Lexer-Stil und die verwendeten Tokens
 beschrieben, sowie eine Reihe Hilfsparser definiert:
 
-> lexDef :: Token.LanguageDef ()
 > lexDef
 >   = Token.LanguageDef
 >   { Token.commentStart    = "/*"
@@ -350,6 +347,8 @@ beschrieben, sowie eine Reihe Hilfsparser definiert:
 > whiteSpace = Token.whiteSpace lexer
 > symbol     = Token.symbol lexer
 
+> type Parser a = GenParser Char Int a
+
 Kommen wir nun zum eigentlichen Parsen. Die Funktion |parse| erhält als Eingabe
 den Programmtext und liefert entweder den entsprechenden Wert vom Typ |Program|
 oder eine Fehlermeldung. Um die Stellen im Quellcode, an denen eine
@@ -360,10 +359,10 @@ Im Gegensatz zu |parse| wirft |parse'| einen Laufzeitfehler bei invalider
 Eingabe.
 
 > parse :: String -> Either String Program
-> parse = mkStdParser pProgram () whiteSpace
+> parse = mkStdParser pProgram 1 whiteSpace
 >
 > parse' :: String -> Program
-> parse' = mkStdParser' pProgram () whiteSpace
+> parse' = mkStdParser' pProgram 1 whiteSpace
 
 Rufen wir uns noch einmal die Syntaxdefinition von \Rec ins Gedächtnis. Diese
 können ziemlich direkt nach Haskell übersetzt werden. Betrachten wir zum
@@ -442,7 +441,9 @@ Hier nun noch die restlichen Parser:
 >   x <- identifier
 >   _ <- symbol "."
 >   e <- pExp
->   return $ Lam x e
+>   i <- getState
+>   updateState succ
+>   return $ Lam i x e
 >
 > pAp = do
 >   fn <- identifier
@@ -497,7 +498,7 @@ wirklich benutzt worden sind.
 > getCalledFnNames (Var _:rest) = getCalledFnNames rest
 > getCalledFnNames (Ap fn args:rest)
 >   = fn : getCalledFnNames args ++ getCalledFnNames rest
-> getCalledFnNames (Lam _ e:rest)
+> getCalledFnNames (Lam _ _ e:rest)
 >   = getCalledFnNames [e] ++ getCalledFnNames rest
 > getCalledFnNames (If e1 e2 e3:rest)
 >   = getCalledFnNames [e1, e2, e3] ++ getCalledFnNames rest
@@ -622,10 +623,8 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 >   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap rest
 
-TODO: Closurize soll nummer entsprechender lambda erhalten
-
-> genCallSequence fnNames paramMap (Lam x e : rest)
->   =  G.Closurize 1 []
+> genCallSequence fnNames paramMap (Lam i x e : rest)
+>   =  G.Closurize i []
 >   <> genCallSequence fnNames paramMap rest
 
 Zur Erinnerung: \emph{false} wird in \Rec als $0$ kodiert und alle anderen
@@ -814,64 +813,60 @@ Goto Programm übersetzt:
 >   <> genExtArgsSection defs
 >   <> G.Seq (map (genDefSection defNames) defs)
 >   <> genOpSection defNames defRhss
->   <> evalState (genLamSection defs) 1
->   <> (G.Label "lamret" $ evalState (genLamRetSection defRhss) 1)
+>   <> genLamSection defs
+>   <> (G.Label "lamret" $ genLamRetSection defRhss)
 >   where
 >   defNames = getDefNames defs
 >   defRhss  = getDefRhss  defs
 
-> genLamSection [] = return mempty
+> genLamSection [] = mempty
 > genLamSection ((_, _, Num _) : rest)
 >   = genLamSection rest
 > genLamSection ((_, _, Var _) : rest)
 >   = genLamSection rest
 > genLamSection ((_, topargs, Ap _ args) : rest)
->   = do t1 <- genLamSection $ map (\x->("dontcare", topargs, x)) args
->        t2 <- genLamSection rest
->        return $ t1 <> t2
+>   = let t1 = genLamSection $ map (\x->("dontcare", topargs, x)) args
+>         t2 = genLamSection rest
+>     in  t1 <> t2
 > genLamSection ((_, topargs, If e1 e2 e3) : rest)
->   = do t1 <- genLamSection [("dontcare", topargs, e1)]
->        t2 <- genLamSection [("dontcare", topargs, e2)]
->        t3 <- genLamSection [("dontcare", topargs, e3)]
->        t4 <- genLamSection rest
->        return $ t1 <> t2 <> t3 <> t4
-> genLamSection ((_, topargs, Lam args e) : rest)
->   = do i <- get
->        put (i + 1)
->        let t1 = G.Label ("lambda" ++ show i)
->                 $  mempty
->                 <> genArgSequence (length args)
->                 <> genCallSequence [] (mkParamMap [args]) [e]
->                 <> G.Return
->        t2 <- genLamSection rest
->        return $  mempty
->               <> t1
->               <> t2
+>   = let t1 = genLamSection [("dontcare", topargs, e1)]
+>         t2 = genLamSection [("dontcare", topargs, e2)]
+>         t3 = genLamSection [("dontcare", topargs, e3)]
+>         t4 = genLamSection rest
+>     in  t1 <> t2 <> t3 <> t4
+> genLamSection ((_, topargs, Lam i args e) : rest)
+>   = let t1 = G.Label ("lambda" ++ show i)
+>              $  mempty
+>              <> genArgSequence (length args)
+>              <> genCallSequence [] (mkParamMap [args]) [e]
+>              <> G.Return
+>         t2 = genLamSection rest
+>     in     mempty
+>         <> t1
+>         <> t2
 
-> genLamRetSection [] = return mempty
+> genLamRetSection [] = mempty
 > genLamRetSection (Num _ : rest)
 >   = genLamRetSection rest
 > genLamRetSection (Var _ : rest)
 >   = genLamRetSection rest
 > genLamRetSection (Ap _ args : rest)
->   = do t1 <- genLamRetSection args
->        t2 <- genLamRetSection rest
->        return $ t1 <> t2
+>   = let t1 = genLamRetSection args
+>         t2 = genLamRetSection rest
+>     in  t1 <> t2
 > genLamRetSection (If e1 e2 e3 : rest)
->   = do t1 <- genLamRetSection [e1]
->        t2 <- genLamRetSection [e2]
->        t3 <- genLamRetSection [e3]
->        t4 <- genLamRetSection rest
->        return $ t1 <> t2 <> t3 <> t4
-> genLamRetSection (Lam _ e : rest)
->   = do i <- get
->        put (i + 1)
->        t1 <- genLamRetSection [e]
->        t2 <- genLamRetSection rest
->        return $  mempty
->               <> (G.If (G.ROp "=" (G.Var "cp") (G.Num i)) (G.Goto ("lambda" ++ show i)))
->               <> t1
->               <> t2
+>   = let t1 = genLamRetSection [e1]
+>         t2 = genLamRetSection [e2]
+>         t3 = genLamRetSection [e3]
+>         t4 = genLamRetSection rest
+>     in  t1 <> t2 <> t3 <> t4
+> genLamRetSection (Lam i _ e : rest)
+>   = let t1 = genLamRetSection [e]
+>         t2 = genLamRetSection rest
+>     in  mempty
+>         <> (G.If (G.ROp "=" (G.Var "cp") (G.Num (toInteger i))) (G.Goto ("lambda" ++ show i)))
+>         <> t1
+>         <> t2
 
 
 Zum Abschluss wollen wir uns die vollständige Übersetzung nach Goto des
