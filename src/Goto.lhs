@@ -772,7 +772,7 @@ Here come the augmented constructors.
 >   go (Closurize p args) = do
 >     go $  mempty
 >        <> PushHeap (Num $ toInteger $ p)
->        <> Push (Var "hp")
+>        -- <> Push (Var "hp")
 >        <> (Seq $ map PushHeap args)
 
 >   go (CallClosure aexp n) = do
@@ -786,6 +786,7 @@ Here come the augmented constructors.
 >        <> Assign "fp" (Var "sp")
 >        <> Push (Num $ toInteger pcVal)
 >        <> Push aexp -- push heap adress on stack (for environment/free vars)
+>        -- <> Assign "cp" aexp -- get pointer to closure code
 >        <> PeekHeap "cp" aexp -- get pointer to closure code
 >        <> Goto "lamret"
 >        <> Label r

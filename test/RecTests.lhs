@@ -39,6 +39,8 @@
 >         , testCase "rec/lambda4" lambda4
 >         , testCase "rec/lambda5" lambda5
 >         , testCase "rec/lambda6" lambda6
+>         , testCase "rec/lambda7" lambda7
+>         , testCase "rec/lambda8" lambda8
 >         ]
 >
 > parsing1 = parse' p @?= e
@@ -169,6 +171,14 @@
 >   p =  "main(a) := fib(a);"
 >     ++ "fib(n) := if n = 0 then 0 else (if n = 1 then 1 else (fib(n-1) + fib(n-2)))"
 >
+> prelude0
+>   =  "I(x) := x;"
+>   ++ "K(x, y) := x;"
+>   ++ "K1(x, y) := y;"
+>   ++ "S(f, g, x) := f(x, g(x));"
+>   ++ "compose(f, g) := \\x. f(g(x));"
+>   ++ "twice(f) := compose(f, f);"
+>
 > lambda1 = run' p [] @?= 30
 >   where
 >   p =  "compose(f, g, x) := f(g(x));"
@@ -184,22 +194,33 @@
 >   where
 >   p =  "main() := (\\x. x + 1)(2)"
 >
-> lambda4 = run' p [] @?= 3
+> lambda4 = run' p [] @?= 7
+>   where
+>   p =  "main() := ((\\x.\\y. x + y)(2))(5)"
+>
+> lambda5 = run' p [] @?= 3
 >   where
 >   p =  "main(a) := (twice(\\x. succ(x)))(1);"
 >     ++ "twice(f) := \\x. f(f(x));"
 >     ++ "succ(x) := x + 1"
 >
-> lambda5 = run' p [] @?= 9
+> lambda6 = run' p [] @?= 9
 >   where
 >   p =  "main(a) := (mkadder(2))(1) + (mkadder(3))(3);"
 >     ++ "mkadder(x) := \\y. x + y"
 >
-> lambda6 = run' p [] @?= 3
+> lambda7 = run' p [] @?= 3
 >   where
 >   p =  "main(a) := (I(\\x. succ(x)))(2);"
 >     ++ "I(x) := x;"
 >     ++ "succ(x) := x + 1"
+>
+> -- Tests from "Implementing functional languages"
+>
+> lambda8 = run' (prelude0 ++ p) [] @?= 3
+>   where
+>   p =  "main() := I(3)"
+>
 >
 > -- Überlege ob das erlaubt sein soll (anonymous lambdas)
 > -- lambda5 = run' p [1] @?= 2

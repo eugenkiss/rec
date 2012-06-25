@@ -40,7 +40,7 @@ Da im Quellcode teilweise auf Bibliotheken und Hilfsfunktionen des Haskell
 
 > import Control.Monad
 > import Data.Monoid
-> import Data.List ((\\), intersect, intercalate, nub, elemIndex)
+> import Data.List ((\\), intersect, intercalate, nub, elemIndex, genericLength)
 > import Data.Maybe (fromJust)
 > import qualified Data.Map as M
 >
@@ -606,8 +606,6 @@ TODO
 > mkFreeMap :: [Name] -> ParamMap
 > mkFreeMap args = M.fromList $ zip args $ map ("h"++) $ map show [1..]
 
-> type LamList = [Exp]
-
 TODO: genCallSequence zu genExpSequence
 
 Nun widmen wir uns dem Kern der Übersetzung; der Übersetzung eines \Rec
@@ -677,18 +675,27 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 
 > genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
 >   =  G.Closurize i (map (G.Var . (\x->lookup' x paramMap)) free)
+>   <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength free)))
 >   <> genCallSequence fnNames paramMap freeMap rest
 >   where free = (M.keys paramMap) \\ [x] `intersect` (getNames [e])
 
-> genCallSequence fnNames paramMap freeMap (LAp l@(Lam i x e) args : rest)
+> genCallSequence fnNames paramMap freeMap (LAp l@(Lam i _ _) args : rest)
 >   =  genCallSequence fnNames paramMap freeMap [l]
 >   <> genCallSequence fnNames paramMap freeMap args
->   <> G.CallClosure (G.Num (toInteger i)) (length args)
+>   <> G.Call ("lambda" ++ show i) (length args)
 >   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap freeMap rest
 
 > genCallSequence fnNames paramMap freeMap (LAp l@(Ap _ _) args : rest)
 >   =  genCallSequence fnNames paramMap freeMap [l]
+>   <> G.Pop "t" -- return value, i.e. heap adress of closure
+>   <> genCallSequence fnNames paramMap freeMap args
+>   <> G.CallClosure (G.Var "t") (length args)
+>   <> genArgSequence (M.size paramMap) -- reset args
+>   <> genCallSequence fnNames paramMap freeMap rest
+
+> genCallSequence fnNames paramMap freeMap (LAp e args : rest)
+>   =  genCallSequence fnNames paramMap freeMap [e]
 >   <> G.Pop "t" -- return value, i.e. heap adress of closure
 >   <> genCallSequence fnNames paramMap freeMap args
 >   <> G.CallClosure (G.Var "t") (length args)
@@ -910,16 +917,20 @@ Goto Programm übersetzt:
 > genLamSection fnNames ((_, topargs, Lam i args e) : rest)
 >   = let t1 = G.Label ("lambda" ++ show i)
 >              $  mempty
->              <> G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+>              <> (if (length free) /= 0
+>                    then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+>                    else mempty)
 >              <> genHArgSequence (length free)
 >              <> genArgSequence (length args)
 >              <> genCallSequence fnNames (mkParamMap [args]) (mkFreeMap free) [e]
 >              <> G.Return
 >         free = getFreeVars topargs [args] e
->         t2 = genLamSection fnNames rest
+>         t2 = genLamSection fnNames [("dontcare", topargs ++ [args], e)]
+>         t3 = genLamSection fnNames rest
 >     in     mempty
 >         <> t1
 >         <> t2
+>         <> t3
 
 > getFreeVars :: [Name] -> [Name] -> Exp -> [Name]
 > getFreeVars outer bound e = (outer \\ bound) `intersect` (getNames [e])
