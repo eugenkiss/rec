@@ -150,6 +150,7 @@ befindet:
 >   = Num Integer
 >   | Var Name
 >   | Ap Name [Exp]
+>   | LAp Exp [Exp]
 >   | Lam Int Name Exp
 >   | If Exp Exp Exp
 >   deriving (Eq, Show)
@@ -275,6 +276,8 @@ schon einen Pretty Printer für \Rec Ausdrücke angeben:
 >   space op  = " " ++ op ++ " "
 > pprExp (Ap f es)
 >   = f ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
+> pprExp (LAp e es)
+>   = "(" ++ pprExp e ++ ")" ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
 > pprExp (Lam _ x e)
 >   = "\\" ++ x ++ ". " ++ pprExp e
 > pprExp (If e1 e2 e3)
@@ -432,7 +435,7 @@ uns zudem an die Operatortabelle von \Rec$\!\!$; diese kann ziemlich direkt
 >     ]
 >   op name = Infix (reservedOp name >> return (\x y -> Ap name [x, y]))
 >
-> pTerm = pLam <|> try pAp <|> try pIf <|> pVar <|> pNum <|> parens pExp <?> "term"
+> pTerm = pLam <|> try pLAp <|> try pAp <|> try pIf <|> pVar <|> pNum <|> parens pExp <?> "term"
 
 Hier nun noch die restlichen Parser:
 
@@ -444,6 +447,11 @@ Hier nun noch die restlichen Parser:
 >   i <- getState
 >   updateState succ
 >   return $ Lam i x e
+>
+> pLAp = do
+>   l <- parens pLam -- TODO: ggf. generalisieren
+>   args <- parens $ commaSep pExp
+>   return $ LAp l args
 >
 > pAp = do
 >   fn <- identifier
@@ -500,6 +508,8 @@ wirklich benutzt worden sind.
 >   = fn : getCalledFnNames args ++ getCalledFnNames rest
 > getCalledFnNames (Lam _ _ e:rest)
 >   = getCalledFnNames [e] ++ getCalledFnNames rest
+> getCalledFnNames (LAp e args:rest)
+>   = getCalledFnNames [e] ++ getCalledFnNames args ++ getCalledFnNames rest
 > getCalledFnNames (If e1 e2 e3:rest)
 >   = getCalledFnNames [e1, e2, e3] ++ getCalledFnNames rest
 
@@ -625,6 +635,13 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 
 > genCallSequence fnNames paramMap (Lam i x e : rest)
 >   =  G.Closurize i []
+>   <> genCallSequence fnNames paramMap rest
+
+> genCallSequence fnNames paramMap (LAp l@(Lam i x e) args : rest)
+>   =  genCallSequence fnNames paramMap [l]
+>   <> genCallSequence fnNames paramMap args
+>   <> G.CallClosure (G.Num (toInteger i)) (length args)
+>   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap rest
 
 Zur Erinnerung: \emph{false} wird in \Rec als $0$ kodiert und alle anderen
@@ -834,6 +851,11 @@ Goto Programm übersetzt:
 >         t3 = genLamSection [("dontcare", topargs, e3)]
 >         t4 = genLamSection rest
 >     in  t1 <> t2 <> t3 <> t4
+> genLamSection ((_, topargs, LAp e args) : rest)
+>   = let t1 = genLamSection [("dontcare", topargs, e)]
+>         t2 = genLamSection $ map (\x->("dontcare", topargs, x)) args
+>         t3 = genLamSection rest
+>     in  t1 <> t2 <> t3
 > genLamSection ((_, topargs, Lam i args e) : rest)
 >   = let t1 = G.Label ("lambda" ++ show i)
 >              $  mempty
@@ -854,6 +876,11 @@ Goto Programm übersetzt:
 >   = let t1 = genLamRetSection args
 >         t2 = genLamRetSection rest
 >     in  t1 <> t2
+> genLamRetSection (LAp e args : rest)
+>   = let t1 = genLamRetSection [e]
+>         t2 = genLamRetSection args
+>         t3 = genLamRetSection rest
+>     in  t1 <> t2 <> t3
 > genLamRetSection (If e1 e2 e3 : rest)
 >   = let t1 = genLamRetSection [e1]
 >         t2 = genLamRetSection [e2]
