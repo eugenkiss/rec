@@ -43,6 +43,11 @@
 >         , testCase "rec/lambda8" lambda8
 >         , testCase "rec/lambda9" lambda9
 >         , testCase "rec/lambda10" lambda10
+>         , testCase "rec/lambda11" lambda11
+>         , testCase "rec/lambda12" lambda12
+>         , testCase "rec/lambda13" lambda13
+>         , testCase "rec/lambda14" lambda14
+>         , testCase "rec/lambda15" lambda15
 >         ]
 >
 > parsing1 = parse' p @?= e
@@ -180,7 +185,7 @@
 >   ++ "K1(x) := \\y. y;"
 >   ++ "S(f)  := \\g. \\x. (f(x))(g(x));"
 >   ++ "compose(f) := \\g. \\x. f(g(x));"
->   ++ "twice(f) := (compose(f))(f);"
+>   ++ "twice(f) := \\x. ((compose(f))(f))(x);"
 >
 > lambda1 = run' p [] @?= 30
 >   where
@@ -232,6 +237,28 @@
 >   where
 >   p =  "id(x) := ((S(\\x.\\y. (K(x))(y)))(\\x. K(x)))(x);"
 >     ++ "main() := id(9)"
+>
+> lambda11 = run' (prelude0 ++ p) [] @?= 88
+>   where
+>   p =  "id(x) := ((S(\\x.\\y. (K(x))(y)))(\\x. K(x)))(x);"
+>     ++ "main() := (twice(\\x.x*2))(id(22))"
+>
+> lambda12 = run' (prelude0 ++ p) [] @?= 9
+>   where
+>   p =  "id(x) := ((S(\\x.\\y. (K(x))(y)))(\\x. K(x)))(x);"
+>     ++ "main() := (twice(twice(twice(\\x.id(x)))))(9)"
+>
+> lambda13 = run' (prelude0 ++ p) [] @?= 160
+>   where
+>   p =  "main() := (twice(twice(\\x.x*2)))(10)"
+>
+> lambda14 = run' (prelude0 ++ p) [] @?= 100
+>   where
+>   p =  "main() := (I(\\x.x*10))(10)"
+>
+> lambda15 = run' (prelude0 ++ p) [] @?= 40
+>   where
+>   p =  "main() := ((I(\\x.twice(x)))(\\x.x*2))(10)"
 >
 >
 > -- Überlege ob das erlaubt sein soll (anonymous lambdas)

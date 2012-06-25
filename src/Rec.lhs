@@ -665,11 +665,17 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 > genCallSequence fnNames paramMap freeMap (Ap fn args : rest)
 >   =  genCallSequence fnNames paramMap freeMap args
 >   <> case M.lookup fn freeMap of
->        Just h  -> G.CallClosure (G.Var h) (length args)
+>        Just h  ->  mempty
+>                 <> G.CallClosure (G.Var h) (length args)
+>                 <> (if (M.size freeMap) /= 0
+>                        then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+>                        else mempty)
+>                 <> genHArgSequence (M.size freeMap) -- reset free vars
 >        Nothing ->
 >          case M.lookup fn paramMap of
 >            Just a  -> G.CallClosure (G.Var a) (length args)
 >            Nothing -> G.Call (labelizeIfOp fnNames fn) (length args)
+>   -- <> genHArgSequence (M.size freeMap) -- reset free vars
 >   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap freeMap rest
 
@@ -690,26 +696,32 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 >   where free1 = (M.keys paramMap) \\ [x] `intersect` (getNames [e])
 >         free2 = (M.keys freeMap)  \\ [x] `intersect` (getNames [e])
 
-> genCallSequence fnNames paramMap freeMap (LAp l@(Lam i _ _) args : rest)
->   =  genCallSequence fnNames paramMap freeMap [l]
+> {--genCallSequence fnNames paramMap freeMap (LAp l@(Lam i _ _) args : rest)
+>   =  mempty
 >   <> genCallSequence fnNames paramMap freeMap args
+>   <> genCallSequence fnNames paramMap freeMap [l]
 >   <> G.Call ("lambda" ++ show i) (length args)
 >   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap freeMap rest
+>   --}
 
-> genCallSequence fnNames paramMap freeMap (LAp l@(Ap _ _) args : rest)
->   =  genCallSequence fnNames paramMap freeMap [l]
->   <> G.Pop "t" -- return value, i.e. heap adress of closure
+> {--genCallSequence fnNames paramMap freeMap (LAp l@(Ap _ _) args : rest)
+>   =  mempty
 >   <> genCallSequence fnNames paramMap freeMap args
+>   <> genCallSequence fnNames paramMap freeMap [l]
+>   <> G.Pop "t" -- return value, i.e. heap adress of closure
 >   <> G.CallClosure (G.Var "t") (length args)
 >   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap freeMap rest
+>   --}
 
 > genCallSequence fnNames paramMap freeMap (LAp e args : rest)
->   =  genCallSequence fnNames paramMap freeMap [e]
->   <> G.Pop "t" -- return value, i.e. heap adress of closure
+>   =  mempty
 >   <> genCallSequence fnNames paramMap freeMap args
+>   <> genCallSequence fnNames paramMap freeMap [e]
+>   <> G.Pop "t" -- return value, i.e. heap adress of closure
 >   <> G.CallClosure (G.Var "t") (length args)
+>   -- <> genHArgSequence (M.size freeMap) -- reset free vars
 >   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap freeMap rest
 
@@ -932,7 +944,7 @@ Goto Programm übersetzt:
 >                    then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
 >                    else mempty)
 >              <> genHArgSequence (length free)
->              <> genArgSequence (length args)
+>              <> genArgSequence (length [args])
 >              <> genCallSequence fnNames (mkParamMap [args]) (mkFreeMap free) [e]
 >              <> G.Return
 >         free = getFreeVars topargs [args] e
