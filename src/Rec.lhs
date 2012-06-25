@@ -449,7 +449,7 @@ Hier nun noch die restlichen Parser:
 >   return $ Lam i x e
 >
 > pLAp = do
->   l <- parens pLam -- TODO: ggf. generalisieren
+>   l <- parens pExp -- TODO: ggf. generalisieren
 >   args <- parens $ commaSep pExp
 >   return $ LAp l args
 >
@@ -513,6 +513,21 @@ wirklich benutzt worden sind.
 > getCalledFnNames (If e1 e2 e3:rest)
 >   = getCalledFnNames [e1, e2, e3] ++ getCalledFnNames rest
 
+TODO 
+
+> getNames :: [Exp] -> [Name]
+> getNames [] = []
+> getNames (Num _:rest) = getNames rest
+> getNames (Var v:rest) = v : getNames rest
+> getNames (Ap fn args:rest)
+>   = fn : getNames args ++ getNames rest
+> getNames (Lam _ x e:rest)
+>   = x : getNames [e] ++ getNames rest
+> getNames (LAp e args:rest)
+>   = getNames [e] ++ getNames args ++ getNames rest
+> getNames (If e1 e2 e3:rest)
+>   = getNames [e1, e2, e3] ++ getNames rest
+
 |findDef| liefert bei Eingabe eines Funktionsnamens und eines \Rec Programms
 die vollständige Definition der gesuchten Funktion. Es wird davon ausgegangen,
 dass |findDef| im Quellcode nur so benutzt wird, dass ein Nichtfinden einer
@@ -566,6 +581,16 @@ leistet dieses:
 >   f i = G.Peek ('a':show i)
 >         $ G.AOp "-" (G.Var "fp") (G.Num $ toInteger (numberOfArgs - i + 1))
 
+TODO
+
+> genHArgSequence :: Int -> G.Program
+> genHArgSequence 0 = mempty
+> genHArgSequence numberOfArgs
+>   = G.Seq $ map f [1..numberOfArgs]
+>   where
+>   f i = G.PeekHeap ('h':show i)
+>         $ G.AOp "+" (G.Var "h0") (G.Num $ toInteger i)
+
 Wenn wir uns dazu auf machen den Funktionsrumpf zu übersetzen, dann müssen
 wir den formalen Parametern einer \Rec Definition positionell die
 entsprechenden Goto Variablen `\lstinline[language=Goto]$a1,a2,...$` zuordnen.
@@ -575,6 +600,11 @@ entsprechenden Goto Variablen `\lstinline[language=Goto]$a1,a2,...$` zuordnen.
 >
 > mkParamMap :: [Name] -> ParamMap
 > mkParamMap args = M.fromList $ zip args $ map ("a"++) $ map show [1..]
+
+TODO
+
+> mkFreeMap :: [Name] -> ParamMap
+> mkFreeMap args = M.fromList $ zip args $ map ("h"++) $ map show [1..]
 
 > type LamList = [Exp]
 
@@ -593,22 +623,31 @@ Argumentliste des |AP| Konstruktors verwendet wird und ohne die
 Verlistifizierung würden zwei Funktionen benötigt werden, die ohnehin fast das
 selbe leisten würden.
 
-> genCallSequence :: [Name] -> ParamMap -> [Exp] -> G.Program
-> genCallSequence _ _ []
+> genCallSequence :: [Name] -> ParamMap -> ParamMap -> [Exp] -> G.Program
+> genCallSequence _ _ _ []
 >   = mempty
-> genCallSequence fnNames paramMap (Num n : rest)
+> genCallSequence fnNames paramMap freeMap (Num n : rest)
 >   =  G.Push (G.Num n)
->   <> genCallSequence fnNames paramMap rest
+>   <> genCallSequence fnNames paramMap freeMap rest
 
 Assoziiere Nummern zu Funktionsdefinitionen, d.h. Zeiger auf
 Funktionsdefinitionen, sodass im GOTO-Programm anhand dieser Nummer auf eine
 bestimmte Funktionsdefinition gesprungen werden kann.
 
-> genCallSequence fnNames paramMap (Var a : rest)
->   =  case M.lookup a paramMap of
+> genCallSequence fnNames paramMap freeMap (Var a : rest)
+>   =  mempty
+>   <> case M.lookup a freeMap of
+>        Just h  -> G.Push $ G.Var h
+>        Nothing ->
+>          case M.lookup a paramMap of
+>            Just x  -> G.Push $ G.Var x
+>            Nothing -> G.Push $ G.Num $ toInteger $ fromJust $ elemIndex a fnNames
+>   {--
+>   <> case M.lookup a paramMap of
 >        Just x  -> G.Push $ G.Var x
 >        Nothing -> G.Push $ G.Num $ toInteger $ fromJust $ elemIndex a fnNames
->   <> genCallSequence fnNames paramMap rest
+>   --}
+>   <> genCallSequence fnNames paramMap freeMap rest
 
 Die Übersetzung atomarer Ausdrücke gestaltet sich problemlos. Bei der
 Übersetzung eines Funktionsaufrufs muss jedoch unbedingt darauf geachtet werden
@@ -625,24 +664,36 @@ Zurücksetzen überflüssig machen würde. Spätestens jedoch bei rekursiven
 Aufrufen sollte auffallen, dass das so nicht funktioniert.
 }
 
-> genCallSequence fnNames paramMap (Ap fn args : rest)
->   =  genCallSequence fnNames paramMap args
->   <> case M.lookup fn paramMap of
->        Just a  -> G.CallClosure (G.Var a) (length args)
->        Nothing -> G.Call (labelizeIfOp fnNames fn) (length args)
+> genCallSequence fnNames paramMap freeMap (Ap fn args : rest)
+>   =  genCallSequence fnNames paramMap freeMap args
+>   <> case M.lookup fn freeMap of
+>        Just h  -> G.CallClosure (G.Var h) (length args)
+>        Nothing ->
+>          case M.lookup fn paramMap of
+>            Just a  -> G.CallClosure (G.Var a) (length args)
+>            Nothing -> G.Call (labelizeIfOp fnNames fn) (length args)
 >   <> genArgSequence (M.size paramMap) -- reset args
->   <> genCallSequence fnNames paramMap rest
+>   <> genCallSequence fnNames paramMap freeMap rest
 
-> genCallSequence fnNames paramMap (Lam i x e : rest)
->   =  G.Closurize i []
->   <> genCallSequence fnNames paramMap rest
+> genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
+>   =  G.Closurize i (map (G.Var . (\x->lookup' x paramMap)) free)
+>   <> genCallSequence fnNames paramMap freeMap rest
+>   where free = (M.keys paramMap) \\ [x] `intersect` (getNames [e])
 
-> genCallSequence fnNames paramMap (LAp l@(Lam i x e) args : rest)
->   =  genCallSequence fnNames paramMap [l]
->   <> genCallSequence fnNames paramMap args
+> genCallSequence fnNames paramMap freeMap (LAp l@(Lam i x e) args : rest)
+>   =  genCallSequence fnNames paramMap freeMap [l]
+>   <> genCallSequence fnNames paramMap freeMap args
 >   <> G.CallClosure (G.Num (toInteger i)) (length args)
 >   <> genArgSequence (M.size paramMap) -- reset args
->   <> genCallSequence fnNames paramMap rest
+>   <> genCallSequence fnNames paramMap freeMap rest
+
+> genCallSequence fnNames paramMap freeMap (LAp l@(Ap _ _) args : rest)
+>   =  genCallSequence fnNames paramMap freeMap [l]
+>   <> G.Pop "t" -- return value, i.e. heap adress of closure
+>   <> genCallSequence fnNames paramMap freeMap args
+>   <> G.CallClosure (G.Var "t") (length args)
+>   <> genArgSequence (M.size paramMap) -- reset args
+>   <> genCallSequence fnNames paramMap freeMap rest
 
 Zur Erinnerung: \emph{false} wird in \Rec als $0$ kodiert und alle anderen
 Werte sind \emph{true}. Deshalb wird der pseudo \Rec Ausdruck
@@ -650,16 +701,16 @@ Werte sind \emph{true}. Deshalb wird der pseudo \Rec Ausdruck
 `\lstinline[language=Rec]$IF 0 != 0 THEN a ELSE b END$' übersetzt. Analog für
 einzelne Variablen:
 
-> genCallSequence fnNames paramMap (If (Num n) e2 e3 : rest)
+> genCallSequence fnNames paramMap freeMap (If (Num n) e2 e3 : rest)
 >   =  G.IfElse (G.ROp "!=" (G.Num n) (G.Num 0))
->               (genCallSequence fnNames paramMap [e2])
->               (genCallSequence fnNames paramMap [e3])
->   <> genCallSequence fnNames paramMap rest
-> genCallSequence fnNames paramMap (If (Var a) e2 e3 : rest)
+>               (genCallSequence fnNames paramMap freeMap [e2])
+>               (genCallSequence fnNames paramMap freeMap [e3])
+>   <> genCallSequence fnNames paramMap freeMap rest
+> genCallSequence fnNames paramMap freeMap (If (Var a) e2 e3 : rest)
 >   =  G.IfElse (G.ROp "!=" (G.Var $ lookup' a paramMap) (G.Num 0))
->               (genCallSequence fnNames paramMap [e2])
->               (genCallSequence fnNames paramMap [e3])
->   <> genCallSequence fnNames paramMap rest
+>               (genCallSequence fnNames paramMap freeMap [e2])
+>               (genCallSequence fnNames paramMap freeMap [e3])
+>   <> genCallSequence fnNames paramMap freeMap rest
 
 Im Allgemeinen kann sich im If-Kopf ein beliebiger \Rec Ausdruck befinden,
 weshalb sich in diesem Fall die Übersetzung etwas anders gestaltet. Und zwar
@@ -667,13 +718,13 @@ werden die relationalen bzw. boolschen Operatoren als Funktionen interpretiert,
 die entweder eine $0$ (\emph{false}) oder eine beliebige andere Zahl wie zum
 Beispiel $1$ (\emph{true}) liefern:
 
-> genCallSequence fnNames paramMap (If e1 e2 e3 : rest)
->   =  genCallSequence fnNames paramMap [e1]
+> genCallSequence fnNames paramMap freeMap (If e1 e2 e3 : rest)
+>   =  genCallSequence fnNames paramMap freeMap [e1]
 >   <> G.Pop "t" -- return value of fn
 >   <> G.IfElse (G.ROp "!=" (G.Var "t") (G.Num 0))
->               (genCallSequence fnNames paramMap [e2])
->               (genCallSequence fnNames paramMap [e3])
->   <> genCallSequence fnNames paramMap rest
+>               (genCallSequence fnNames paramMap freeMap [e2])
+>               (genCallSequence fnNames paramMap freeMap [e3])
+>   <> genCallSequence fnNames paramMap freeMap rest
 
 Nun können wir endlich die Funktion beschreiben, die eine einzelne \Rec
 Definition übersetzt. Zu beachten ist, dass am Ende eines Abschnitts eine
@@ -684,7 +735,7 @@ Definition übersetzt. Zu beachten ist, dass am Ende eines Abschnitts eine
 > genDefSection fns (name, args, exp)
 >   = G.Label name
 >     $  genArgSequence (length args)
->     <> genCallSequence fns (mkParamMap args) [exp]
+>     <> genCallSequence fns (mkParamMap args) (mkFreeMap []) [exp]
 >     <> G.Return
 
 Wir haben bisher die Übersetzung nativer Operatoren etwas vernachlässigt.
@@ -830,42 +881,49 @@ Goto Programm übersetzt:
 >   <> genExtArgsSection defs
 >   <> G.Seq (map (genDefSection defNames) defs)
 >   <> genOpSection defNames defRhss
->   <> genLamSection defs
+>   <> genLamSection defNames defs
 >   <> (G.Label "lamret" $ genLamRetSection defRhss)
 >   where
 >   defNames = getDefNames defs
 >   defRhss  = getDefRhss  defs
 
-> genLamSection [] = mempty
-> genLamSection ((_, _, Num _) : rest)
->   = genLamSection rest
-> genLamSection ((_, _, Var _) : rest)
->   = genLamSection rest
-> genLamSection ((_, topargs, Ap _ args) : rest)
->   = let t1 = genLamSection $ map (\x->("dontcare", topargs, x)) args
->         t2 = genLamSection rest
+> genLamSection _ [] = mempty
+> genLamSection fnNames ((_, _, Num _) : rest)
+>   = genLamSection fnNames rest
+> genLamSection fnNames ((_, _, Var _) : rest)
+>   = genLamSection fnNames rest
+> genLamSection fnNames ((_, topargs, Ap _ args) : rest)
+>   = let t1 = genLamSection fnNames $ map (\x->("dontcare", topargs, x)) args
+>         t2 = genLamSection fnNames rest
 >     in  t1 <> t2
-> genLamSection ((_, topargs, If e1 e2 e3) : rest)
->   = let t1 = genLamSection [("dontcare", topargs, e1)]
->         t2 = genLamSection [("dontcare", topargs, e2)]
->         t3 = genLamSection [("dontcare", topargs, e3)]
->         t4 = genLamSection rest
+> genLamSection fnNames ((_, topargs, If e1 e2 e3) : rest)
+>   = let t1 = genLamSection fnNames [("dontcare", topargs, e1)]
+>         t2 = genLamSection fnNames [("dontcare", topargs, e2)]
+>         t3 = genLamSection fnNames [("dontcare", topargs, e3)]
+>         t4 = genLamSection fnNames rest
 >     in  t1 <> t2 <> t3 <> t4
-> genLamSection ((_, topargs, LAp e args) : rest)
->   = let t1 = genLamSection [("dontcare", topargs, e)]
->         t2 = genLamSection $ map (\x->("dontcare", topargs, x)) args
->         t3 = genLamSection rest
+> genLamSection fnNames ((_, topargs, LAp e args) : rest)
+>   = let t1 = genLamSection fnNames [("dontcare", topargs, e)]
+>         t2 = genLamSection fnNames $ map (\x->("dontcare", topargs, x)) args
+>         t3 = genLamSection fnNames rest
 >     in  t1 <> t2 <> t3
-> genLamSection ((_, topargs, Lam i args e) : rest)
+> genLamSection fnNames ((_, topargs, Lam i args e) : rest)
 >   = let t1 = G.Label ("lambda" ++ show i)
 >              $  mempty
+>              <> G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+>              <> genHArgSequence (length free)
 >              <> genArgSequence (length args)
->              <> genCallSequence [] (mkParamMap [args]) [e]
+>              <> genCallSequence fnNames (mkParamMap [args]) (mkFreeMap free) [e]
 >              <> G.Return
->         t2 = genLamSection rest
+>         free = getFreeVars topargs [args] e
+>         t2 = genLamSection fnNames rest
 >     in     mempty
 >         <> t1
 >         <> t2
+
+> getFreeVars :: [Name] -> [Name] -> Exp -> [Name]
+> getFreeVars outer bound e = (outer \\ bound) `intersect` (getNames [e])
+> --getFreeVars outer bound e = (getNames [e]) \\ bound
 
 > genLamRetSection [] = mempty
 > genLamRetSection (Num _ : rest)

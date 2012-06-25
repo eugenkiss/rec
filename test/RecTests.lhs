@@ -186,18 +186,18 @@
 >
 > lambda4 = run' p [] @?= 3
 >   where
->   p =  "main(a) := twice(\\x. succ(x))(1);"
+>   p =  "main(a) := (twice(\\x. succ(x)))(1);"
 >     ++ "twice(f) := \\x. f(f(x));"
 >     ++ "succ(x) := x + 1"
 >
 > lambda5 = run' p [] @?= 9
 >   where
->   p =  "main(a) := mkadder(2)(1) + mkadder(3)(3);"
+>   p =  "main(a) := (mkadder(2))(1) + (mkadder(3))(3);"
 >     ++ "mkadder(x) := \\y. x + y"
 >
 > lambda6 = run' p [] @?= 3
 >   where
->   p =  "main(a) := I(\\x. succ(x))(2)"
+>   p =  "main(a) := (I(\\x. succ(x)))(2);"
 >     ++ "I(x) := x;"
 >     ++ "succ(x) := x + 1"
 >

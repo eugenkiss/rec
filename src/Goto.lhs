@@ -124,8 +124,10 @@
 >
 > pprint' (PushHeap a)   = text "PUSH_HEAP" <+> text (show a)
 > pprint' (PeekHeap v a) = text v <+> text ":= PEEK_HEAP" <+> text (show a)
+> pprint' (Closurize p [])
+>   = text "CLOSURIZE" <+> text (show p)
 > pprint' (Closurize p args)
->   = text "CLOSURIZE" <+> text (show p) <+> hcat (punctuate comma $ map (text . show) args)
+>   = text "CLOSURIZE" <+> hcat (punctuate comma $ (text . show) p : map (text . show) args)
 > pprint' (CallClosure a n)
 >   = text "CALL_CLOSURE" <+> text (show a) PP.<> text "," <+> text (show n)
 
@@ -246,16 +248,12 @@ TODO
 >
 > pClosurize :: Parser Program
 > pClosurize
->   =    do { reserved "CLOSURIZE"
->           ; p <- integer
->           ; return $ Closurize (fromInteger p) []
->           }
->   <|>  do { reserved "CLOSURIZE"
->           ; p <- integer
->           ; _ <- symbol ","
->           ; args <- commaSep1 pAExp
->           ; return $ Closurize (fromInteger p) args
->           }
+>   = do reserved "CLOSURIZE"
+>        p <- integer
+>        args <- option [] (do { _ <- symbol ","
+>                              ; commaSep1 pAExp
+>                              })
+>        return $ Closurize (fromInteger p) args
 >
 > pPushHeap :: Parser Program
 > pPushHeap = do
@@ -787,10 +785,12 @@ Here come the augmented constructors.
 >        <> Push (Var "fp")
 >        <> Assign "fp" (Var "sp")
 >        <> Push (Num $ toInteger pcVal)
+>        <> Push aexp -- push heap adress on stack (for environment/free vars)
 >        <> PeekHeap "cp" aexp -- get pointer to closure code
 >        <> Goto "lamret"
 >        <> Label r
 >           (  Pop returnVal
+>           <> Pop temp -- old heap adress
 >           <> Pop temp -- old return adress
 >           <> Pop "fp" -- reassign old fp
 >           <> mkPopSequence n temp -- pop old args + ret addr
@@ -810,9 +810,11 @@ Here come the augmented constructors.
 >        <> Push (Var "fp")
 >        <> Assign "fp" (Var "sp")
 >        <> Push (Num $ toInteger pcVal)
+>       -- <> Push (Num 0) -- stub heap adress
 >        <> Goto fn
 >        <> Label r
 >           (  Pop returnVal
+>        --   <> Pop temp -- old heap adress
 >           <> Pop temp -- old return adress
 >           <> Pop "fp" -- reassign old fp
 >           <> mkPopSequence n temp -- pop old args + ret addr
