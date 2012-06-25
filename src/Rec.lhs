@@ -440,12 +440,12 @@ uns zudem an die Operatortabelle von \Rec$\!\!$; diese kann ziemlich direkt
 Hier nun noch die restlichen Parser:
 
 > pLam = do
+>   i <- getState
+>   updateState succ
 >   _ <- symbol "\\"
 >   x <- identifier
 >   _ <- symbol "."
 >   e <- pExp
->   i <- getState
->   updateState succ
 >   return $ Lam i x e
 >
 > pLAp = do
@@ -673,11 +673,22 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 >   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap freeMap rest
 
-> genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
+> {--genCallSequence fnNames paramMap freeMap (Lam i x (Lam j y e) : rest)
 >   =  G.Closurize i (map (G.Var . (\x->lookup' x paramMap)) free)
 >   <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength free)))
+>   <> G.Call ("lambda" ++ show j) (length [y])
+>   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap freeMap rest
 >   where free = (M.keys paramMap) \\ [x] `intersect` (getNames [e])
+>   --}
+
+> genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
+>   =  G.Closurize i ((map (G.Var . (\x->lookup' x paramMap)) free1) ++
+>                     (map (G.Var . (\x->lookup' x freeMap))  free2))
+>   <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength (free1++free2))))
+>   <> genCallSequence fnNames paramMap freeMap rest
+>   where free1 = (M.keys paramMap) \\ [x] `intersect` (getNames [e])
+>         free2 = (M.keys freeMap)  \\ [x] `intersect` (getNames [e])
 
 > genCallSequence fnNames paramMap freeMap (LAp l@(Lam i _ _) args : rest)
 >   =  genCallSequence fnNames paramMap freeMap [l]

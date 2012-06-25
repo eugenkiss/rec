@@ -41,6 +41,8 @@
 >         , testCase "rec/lambda6" lambda6
 >         , testCase "rec/lambda7" lambda7
 >         , testCase "rec/lambda8" lambda8
+>         , testCase "rec/lambda9" lambda9
+>         , testCase "rec/lambda10" lambda10
 >         ]
 >
 > parsing1 = parse' p @?= e
@@ -173,11 +175,12 @@
 >
 > prelude0
 >   =  "I(x) := x;"
->   ++ "K(x, y) := x;"
->   ++ "K1(x, y) := y;"
->   ++ "S(f, g, x) := f(x, g(x));"
->   ++ "compose(f, g) := \\x. f(g(x));"
->   ++ "twice(f) := compose(f, f);"
+>   ++ "I(x)  := x;"
+>   ++ "K(x)  := \\y. x;"
+>   ++ "K1(x) := \\y. y;"
+>   ++ "S(f)  := \\g. \\x. (f(x))(g(x));"
+>   ++ "compose(f) := \\g. \\x. f(g(x));"
+>   ++ "twice(f) := (compose(f))(f);"
 >
 > lambda1 = run' p [] @?= 30
 >   where
@@ -220,6 +223,15 @@
 > lambda8 = run' (prelude0 ++ p) [] @?= 3
 >   where
 >   p =  "main() := I(3)"
+>
+> lambda9 = run' (prelude0 ++ p) [] @?= 9
+>   where
+>   p =  "main() := ((S(\\x.\\y. (K(x))(y)))(\\x. K(x)))(9)"
+>
+> lambda10 = run' (prelude0 ++ p) [] @?= 9
+>   where
+>   p =  "id(x) := ((S(\\x.\\y. (K(x))(y)))(\\x. K(x)))(x);"
+>     ++ "main() := id(9)"
 >
 >
 > -- Überlege ob das erlaubt sein soll (anonymous lambdas)
