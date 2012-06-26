@@ -49,6 +49,10 @@
 >         , testCase "rec/lambda14" lambda14
 >         , testCase "rec/lambda15" lambda15
 >         , testCase "rec/lambda16" lambda16
+>         , testCase "rec/lambda17" lambda17
+>         , testCase "rec/lambda18" lambda18
+>         , testCase "rec/lambda19" lambda19
+>         , testCase "rec/lambda20" lambda20
 >         ]
 >
 > parsing1 = parse' p @?= e
@@ -267,6 +271,31 @@
 >     ++ "TWO() := \\f.\\x.f(f(x));"
 >     ++ "numerify(n) := (n(\\x.x+1))(0)"
 >
+> lambda17 = run' (prelude0 ++ p) [] @?= 99
+>   where
+>   p =  "test() := \\n.\\z. (n(\\x.n(x)))(z);"
+>     ++ "main() := ((test())(\\x.x))(99)"
+>
+> lambda18 = run' (prelude0 ++ p) [] @?= 99
+>   where
+>   p =  "test() := \\n.\\f.\\z. f((n(\\x.f(x)))(z));"
+>     ++ "main() := (((test())(\\x.x))(\\x.x))(99)"
+>
+> lambda19 = run' (prelude0 ++ p) [] @?= 3
+>   where
+>   p =  "numerify(n) := (n(\\x.x+1))(0);"
+>     ++ "zero() := \\f.\\x.x;"
+>     ++ "succ() := \\n.\\f.\\z. f((n(f))(z));"
+>     ++ "one()  := (succ())(zero());"
+>     ++ "two()  := (succ())(one());"
+>     ++ "main() := numerify((succ())(two()))"
+>
+> lambda20 = run' (prelude0 ++ p) [] @?= 100
+>   where
+>   p =  "TRUE() := \\onTrue.\\onFalse.onTrue(\\x. x);"
+>     ++ "FALSE() := \\onTrue.\\onFalse.onFalse(\\x. x);"
+>     ++ "IF0(test) := \\onTrue.\\onFalse.(test(onTrue))(onFalse);"
+>     ++ "main() := ((IF0(TRUE()))(\\x.100))(\\y.200)"
 >
 > -- Überlege ob das erlaubt sein soll (anonymous lambdas)
 > -- lambda5 = run' p [1] @?= 2

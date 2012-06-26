@@ -40,7 +40,7 @@ Da im Quellcode teilweise auf Bibliotheken und Hilfsfunktionen des Haskell
 
 > import Control.Monad
 > import Data.Monoid
-> import Data.List ((\\), intersect, intercalate, nub, elemIndex, genericLength)
+> import Data.List ((\\), intersect, intercalate, nub, genericLength)
 > import Data.Maybe (fromJust)
 > import qualified Data.Map as M
 >
@@ -528,6 +528,22 @@ TODO
 > getNames (If e1 e2 e3:rest)
 >   = getNames [e1, e2, e3] ++ getNames rest
 
+TODO
+
+> getFreeNames :: [Exp] -> [Name]
+> getFreeNames [] = []
+> getFreeNames (Num _:rest) = getFreeNames rest
+> getFreeNames (Var v:rest) = v : getFreeNames rest
+> getFreeNames (Ap fn args:rest)
+>   = fn : getFreeNames args ++ getFreeNames rest
+> getFreeNames (Lam _ _ _:rest)
+>   = getFreeNames rest
+> getFreeNames (LAp e args:rest)
+>   = getFreeNames [e] ++ getFreeNames args ++ getFreeNames rest
+> getFreeNames (If e1 e2 e3:rest)
+>   = getFreeNames [e1, e2, e3] ++ getFreeNames rest
+
+
 |findDef| liefert bei Eingabe eines Funktionsnamens und eines \Rec Programms
 die vollständige Definition der gesuchten Funktion. Es wird davon ausgegangen,
 dass |findDef| im Quellcode nur so benutzt wird, dass ein Nichtfinden einer
@@ -689,8 +705,11 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 >   --}
 
 > genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
->   =  G.Closurize i ((map (G.Var . (\x->lookup' x paramMap)) free1) ++
->                     (map (G.Var . (\x->lookup' x freeMap))  free2))
+>   =  G.Closurize i (
+>        (map (G.Var . (\x->lookup' x freeMap))  (reverse free2))
+>        ++
+>        (map (G.Var . (\x->lookup' x paramMap)) (reverse free1))
+>        )
 >   <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength (free1++free2))))
 >   <> genCallSequence fnNames paramMap freeMap rest
 >   where free1 = (((M.keys paramMap) \\ [x]) `intersect` (getNames [e])) \\ free2
@@ -960,7 +979,7 @@ Goto Programm übersetzt:
 
 > getFreeVars :: [Name] -> [Name] -> Exp -> [Name]
 > getFreeVars outer bound e = (outer \\ bound) `intersect` (getNames [e])
-> --getFreeVars outer bound e = (getNames [e]) \\ bound
+> --getFreeVars outer bound e = (getFreeNames [e]) \\ bound
 
 > genLamRetSection [] = mempty
 > genLamRetSection (Num _ : rest)
