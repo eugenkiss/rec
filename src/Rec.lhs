@@ -448,10 +448,22 @@ Hier nun noch die restlichen Parser:
 >   e <- pExp
 >   return $ Lam i x e
 >
-> pLAp = do
->   l <- parens pExp -- TODO: ggf. generalisieren
->   args <- parens $ commaSep pExp
->   return $ LAp l args
+
+TODO: Kommaseparierte Elemente
+
+> pLAp =
+>     do {l <- try pAp <|> try (parens $ pLam) <|> try pVar
+>        ;pars <- many1 $ (parens pExp)
+>        ;return $ mkLApChain (reverse (l:pars))
+>        }
+>     <|>
+>     do {l <- parens pExp
+>        ;args <- parens $ commaSep pExp
+>        ;return $ LAp l args
+>        }
+>    where mkLApChain [e]    = e
+>          mkLApChain (e:es) = LAp (mkLApChain es) [e]
+> 
 >
 > pAp = do
 >   fn <- identifier

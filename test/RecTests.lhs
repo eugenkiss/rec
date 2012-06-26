@@ -54,6 +54,8 @@
 >         , testCase "rec/lambda19" lambda19
 >         , testCase "rec/lambda20" lambda20
 >         , testCase "rec/lambda21" lambda21
+>         , testCase "rec/lambda22" lambda22
+>         , testCase "rec/lambda23" lambda23
 >         ]
 >
 > parsing1 = parse' p @?= e
@@ -189,9 +191,9 @@
 >   ++ "I(x)  := x;"
 >   ++ "K(x)  := \\y. x;"
 >   ++ "K1(x) := \\y. y;"
->   ++ "S(f)  := \\g. \\x. (f(x))(g(x));"
+>   ++ "S(f)  := \\g. \\x. f(x)(g(x));"
 >   ++ "compose(f) := \\g. \\x. f(g(x));"
->   ++ "twice(f) := \\x. ((compose(f))(f))(x);"
+>   ++ "twice(f) := \\x. compose(f)(f)(x);"
 >
 > lambda1 = run' p [] @?= 30
 >   where
@@ -214,18 +216,18 @@
 >
 > lambda5 = run' p [] @?= 3
 >   where
->   p =  "main(a) := (twice(\\x. succ(x)))(1);"
+>   p =  "main(a) := twice(\\x. succ(x))(1);"
 >     ++ "twice(f) := \\x. f(f(x));"
 >     ++ "succ(x) := x + 1"
 >
 > lambda6 = run' p [] @?= 9
 >   where
->   p =  "main(a) := (mkadder(2))(1) + (mkadder(3))(3);"
+>   p =  "main(a) := mkadder(2)(1) + mkadder(3)(3);"
 >     ++ "mkadder(x) := \\y. x + y"
 >
 > lambda7 = run' p [] @?= 3
 >   where
->   p =  "main(a) := (I(\\x. succ(x)))(2);"
+>   p =  "main(a) := I(\\x. succ(x))(2);"
 >     ++ "I(x) := x;"
 >     ++ "succ(x) := x + 1"
 >
@@ -256,26 +258,26 @@
 >
 > lambda13 = run' (prelude0 ++ p) [] @?= 160
 >   where
->   p =  "main() := (twice(twice(\\x.x*2)))(10)"
+>   p =  "main() := twice(twice(\\x.x*2))(10)"
 >
 > lambda14 = run' (prelude0 ++ p) [] @?= 100
 >   where
->   p =  "main() := (I(\\x.x*10))(10)"
+>   p =  "main() := I(\\x.x*10)(10)"
 >
 > lambda15 = run' (prelude0 ++ p) [] @?= 40
 >   where
->   p =  "main() := ((I(\\x.twice(x)))(\\x.x*2))(10)"
+>   p =  "main() := I(\\x.twice(x))(\\x.x*2)(10)"
 >
 > lambda16 = run' (prelude0 ++ p) [] @?= 2
 >   where
 >   p =  "main() := numerify(TWO());"
 >     ++ "TWO() := \\f.\\x.f(f(x));"
->     ++ "numerify(n) := (n(\\x.x+1))(0)"
+>     ++ "numerify(n) := n(\\x.x+1)(0)"
 >
 > lambda17 = run' (prelude0 ++ p) [] @?= 99
 >   where
 >   p =  "test() := \\n.\\z. (n(\\x.n(x)))(z);"
->     ++ "main() := ((test())(\\x.x))(99)"
+>     ++ "main() := test()(\\x.x)(99)"
 >
 > lambda18 = run' (prelude0 ++ p) [] @?= 99
 >   where
@@ -284,40 +286,43 @@
 >
 > lambda19 = run' (prelude0 ++ p) [] @?= 3
 >   where
->   p =  "numerify(n) := (n(\\x.x+1))(0);"
+>   p =  "numerify(n) := n(\\x.x+1)(0);"
 >     ++ "zero() := \\f.\\x.x;"
->     ++ "succ() := \\n.\\f.\\z. f((n(f))(z));"
->     ++ "one()  := (succ())(zero());"
->     ++ "two()  := (succ())(one());"
->     ++ "main() := numerify((succ())(two()))"
+>     ++ "succ() := \\n.\\f.\\z. f(n(f)(z));"
+>     ++ "one()  := succ()(zero());"
+>     ++ "two()  := succ()(one());"
+>     ++ "main() := numerify(succ()(two()))"
 >
 > lambda20 = run' (prelude0 ++ p) [] @?= 100
 >   where
 >   p =  "TRUE() := \\onTrue.\\onFalse.onTrue(\\x. x);"
 >     ++ "FALSE() := \\onTrue.\\onFalse.onFalse(\\x. x);"
->     ++ "IF0(test) := \\onTrue.\\onFalse.(test(onTrue))(onFalse);"
->     ++ "main() := ((IF0(TRUE()))(\\x.100))(\\y.200)"
+>     ++ "IF0(test) := \\onTrue.\\onFalse.test(onTrue)(onFalse);"
+>     ++ "main() := IF0(TRUE())(\\x.100)(\\y.200)"
 >
 > lambda21 = run' p [] @?= 2
 >   where
->   p =  "numerify(n) := (n(\\x.x+1))(0);"
+>   p =  "numerify(n) := n(\\x.x+1)(0);"
 >     ++ "ZERO() := \\f.\\x.x;"
->     ++ "SUCC() := \\n.\\f.\\z. f((n(f))(z));"
->     ++ "ONE()  := (SUCC())(ZERO());"
->     ++ "TWO()  := (SUCC())(ONE());"
+>     ++ "SUCC() := \\n.\\f.\\z. f(n(f)(z));"
+>     ++ "ONE()  := SUCC()(ZERO());"
+>     ++ "TWO()  := SUCC()(ONE());"
 >     ++ ""
 >     ++ "VOID() := \\x. x;"
 >     ++ "NIL() := \\onEmpty.\\onPair. onEmpty(VOID());"
->     ++ "CONS(hd) := \\tl.\\onEmpty.\\onPair.(onPair(hd))(tl);"
->     ++ "HEAD(list) := (list(VOID()))(\\hd.\\tl.hd);"
->     ++ "TAIL(list) := (list(VOID()))(\\hd.\\tl.tl);"
->     ++ "l() := (CONS(ZERO()))((CONS(TWO()))(NIL()));"
+>     ++ "CONS(hd) := \\tl.\\onEmpty.\\onPair.onPair(hd)(tl);"
+>     ++ "HEAD(list) := list(VOID())(\\hd.\\tl.hd);"
+>     ++ "TAIL(list) := list(VOID())(\\hd.\\tl.tl);"
+>     ++ "l() := CONS(ZERO()) (CONS(TWO())(NIL()));"
 >     ++ ""
 >     ++ "main() := numerify(HEAD(TAIL(l()))) // == 2"
 >
-> -- Überlege ob das erlaubt sein soll (anonymous lambdas)
-> -- lambda5 = run' p [1] @?= 2
-> --  where
-> --   p =  "main(a) := (\\x. x + x)(1)"
+> lambda22 = run' p [] @?= 120
+>   where
+>   p =  "U(f) := f(f);"
+>     ++ "main() := U(\\h.\\n.if (n <= 1) then 1 else n*(h(h))(n-1))(5)"
 >
-> -- TODO: Noch mehr lambda tests
+> lambda23 = run' p [] @?= 120
+>   where
+>   p =  "Y(f) := f(\\x. Y(f)(x));"
+>     ++ "main() := Y(\\f.\\n. if (n <= 1) then 1 else n*f(n-1))(5)"
