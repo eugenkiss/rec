@@ -1,7 +1,7 @@
 - Direktes zuweisen von top-level funktionen als parameter ermöglichen, sodass
   nicht immer in einen lambda-ausdruck gewrappt werden muss
 - lambda sowie LAp mit mehreren parametern erlauben sowie parsen
-- funktionalen beispiele mit mklist, takewhile, sum etc.
+- funktionalen beispiele mit mklist, takewhile, sum, streams mit closures etc.
 - primitive Übersetzung nach GOTO strikt impelementieren
 - use landin paper
 - Allow LOOP and WHILE Schleifen in GOTO!

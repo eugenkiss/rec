@@ -20,38 +20,39 @@ In dem folgenden Abschnitt wird das Modul, das durch diese Datei beschrieben
 wird, definiert. Das Modul hat den Namen \emph{Rec} und exportiert eine Reihe
 öffentlicher Funktionen, die im weitern Verlauf noch erläutert werden.
 
-> module Rec
->   ( Program
->   , pprint
->   , parse
->   , parse'
->   , eval
->   , run
->   , run'
->   , genGoto
->   -- for testing
->   , Def
->   , Exp (..)
->   , Name
->   ) where
+\begin{code}
+module Rec
+  ( Program
+  , pprint
+  , parse
+  , parse'
+  , eval
+  , run
+  , run'
+  , genGoto
+  -- for testing
+  , Def
+  , Exp (..)
+  , Name
+  ) where
+\end{code}
 
 Da im Quellcode teilweise auf Bibliotheken und Hilfsfunktionen des Haskell
 Ökosystems zugegriffen wird, müssen diese natürlich vorher importiert werden:
 
-> import Control.Monad
-> import Data.Monoid
-> import Data.List ((\\), intersect, intercalate, nub, genericLength, sort)
-> import Data.Maybe (fromJust)
-> import qualified Data.Map as M
->
-> import qualified Text.ParserCombinators.Parsec.Token as Token
-> import Text.ParserCombinators.Parsec hiding (Parser, State, labels, parse)
-> import Text.ParserCombinators.Parsec.Expr
->
-> import Util
-> import qualified Goto as G
->
-> lookup' k map = fromJust $ M.lookup k map
+\begin{code}
+import Control.Monad
+import Data.Monoid
+import Data.List ((\\), intersect, intercalate, nub, genericLength, sort)
+import Data.Maybe (fromJust)
+import qualified Data.Map as M
+import qualified Text.ParserCombinators.Parsec.Token as Token
+import Text.ParserCombinators.Parsec hiding (Parser, State, labels, parse)
+import Text.ParserCombinators.Parsec.Expr
+import Util
+import qualified Goto as G
+lookup' k map = fromJust $ M.lookup k map
+\end{code}
 
 
 \subsection{Abstrakte Syntax}
@@ -115,23 +116,23 @@ definiert\footnote{|AssocRight| etc. sind Konstruktoren, die aus Parsec
 importiert sind. Üblicherweise würde man einen eigenen Datentyp |Assoc|
 definieren.}:
 
-> operators = ["+","-","*","/","^","%","=","!=","<","<=",">",">=","&&","||"]
->
-> getOpPrecedence op
->   | op `elem` ["^"]                        = 7
->   | op `elem` ["*","/"]                    = 6
->   | op `elem` ["+","-"]                    = 5
->   | op `elem` ["%"]                        = 4
->   | op `elem` ["=","!=",">",">=","<","<="] = 3
->   | op `elem` ["&&"]                       = 2
->   | op `elem` ["||"]                       = 1
->   | otherwise                              = 8 -- useful for application
->
-> getOpAssociativity op
->   | op `elem` ["^"]                           = AssocRight
->   | op `elem` ["=","!=",">",">=","<","<="]    = AssocNone
->   | op `elem` ["*","/","+","-","%","&&","||"] = AssocLeft
->   | otherwise                                 = error "Impossible!"
+\begin{code}
+operators = ["+","-","*","/","^","%","=","!=","<","<=",">",">=","&&","||"]
+getOpPrecedence op
+  | op `elem` ["^"]                        = 7
+  | op `elem` ["*","/"]                    = 6
+  | op `elem` ["+","-"]                    = 5
+  | op `elem` ["%"]                        = 4
+  | op `elem` ["=","!=",">",">=","<","<="] = 3
+  | op `elem` ["&&"]                       = 2
+  | op `elem` ["||"]                       = 1
+  | otherwise                              = 8 -- useful for application
+getOpAssociativity op
+  | op `elem` ["^"]                           = AssocRight
+  | op `elem` ["=","!=",">",">=","<","<="]    = AssocNone
+  | op `elem` ["*","/","+","-","%","&&","||"] = AssocLeft
+  | otherwise                                 = error "Impossible!"
+\end{code}
 
 Kommen wir zurück zu \Rec Programmen. Ein \Rec Programm ($\l prog \r$) besteht
 also aus einer oder mehreren Funktionsdefinitionen ($\l fn \r$), die durch ein
@@ -146,14 +147,16 @@ der Definition eines \Rec Ausdrucks ($\l exp \r$), also jenes Ausdrucks, der
 sich jeweils rechts vom `\lstinline[language=Rec]$:=$` einer Definition
 befindet:
 
-> data Exp
->   = Num Integer
->   | Var Name
->   | Ap Name [Exp]
->   | LAp Exp [Exp]
->   | Lam Int Name Exp
->   | If Exp Exp Exp
->   deriving (Eq, Show)
+\begin{code}
+data Exp
+  = Num Integer
+  | Var Name
+  | Ap Name [Exp]
+  | LAp Exp [Exp]
+  | Lam Int Name Exp
+  | If Exp Exp Exp
+  deriving (Eq, Show)
+\end{code}
 
 Wie wird nun ein \Rec Ausdruck durch den algebraischen Datentyp |Exp|
 dargestellt? Wir betrachten ein Beispiel: der \Rec Ausdruck $x + y$ wird durch
@@ -162,17 +165,23 @@ werden Variablen durch einen |Var| Konstruktor dargestellt, der den Namen der
 Variablen beinhaltet. Ein Variablenname ist nichts weiter als eine
 Zeichenkette:
 
-> type Name = String
+\begin{code}
+type Name = String
+\end{code}
 
 Ein \Rec Programm ist lediglich eine Liste von Funktionsdefinitionen:
 
-> type Program = [Def]
+\begin{code}
+type Program = [Def]
+\end{code}
 
 Eine Funktionsdefinition beinhaltet den Namen der Funktion, ihre (formalen)
 Parameter\footnote{Die Parameterliste darf natürlich auch leer sein im Falle
 einer Funktion ohne Parameter.} und den Funktionskörper:
 
-> type Def = (Name, [Name], Exp)
+\begin{code}
+type Def = (Name, [Name], Exp)
+\end{code}
 
 Zum Abschluss betrachten wird noch ein kleines \Rec Programm:
 %
@@ -195,22 +204,22 @@ repräsentiert:
 
 % A standard prelude
 % ------------------
-% 
+%
 % TODO: Better prelude with map, lists constructor etc.
 % TODO: Also only include if they are used at all.
-% 
+%
 % Almost every programming language provides some useful, predefined definitions
 % by default. Rec is no different:
-% 
+%
 %     I(x) = x;
 %     K(x, y) = x;
 %     K1(x, y) = y;
 %     S(f, g, x) = f(x, g(x));
 %     compose(f, g, x) = f(g(x));
 %     twice(f) = compose(f, f)
-% 
+%
 % The following definition for `preludeDefs` embodies these definitions:
-% 
+%
 % > preludeDefs :: RecProgram
 % > preludeDefs
 % >     = [ ("I", ["x"], Var "x")
@@ -230,70 +239,74 @@ Funktion wird benötigt! Dabei sollten wir insbesondere darauf achten, dass
 keine überflüssigen Klammern bei Infix-Operatoren ausgegeben werden, weshalb
 wir folgende zwei Hilfsfunktionen definieren:
 
-> parensOrNotL op l s
->   | getOpPrecedence op > getOpPrecedence l = "(" ++ s ++ ")"
->   | getOpPrecedence op < getOpPrecedence l = s
->   | otherwise = case getOpAssociativity op of
->                   AssocLeft  -> s
->                   _          -> "(" ++ s ++ ")"
->
-> parensOrNotR op r s
->   | getOpPrecedence op > getOpPrecedence r = "(" ++ s ++ ")"
->   | getOpPrecedence op < getOpPrecedence r = s
->   | otherwise = case getOpAssociativity op of
->                   AssocRight  -> s
->                   _          -> "(" ++ s ++ ")"
+\begin{code}
+parensOrNotL op l s
+  | getOpPrecedence op > getOpPrecedence l = "(" ++ s ++ ")"
+  | getOpPrecedence op < getOpPrecedence l = s
+  | otherwise = case getOpAssociativity op of
+                  AssocLeft  -> s
+                  _          -> "(" ++ s ++ ")"
+parensOrNotR op r s
+  | getOpPrecedence op > getOpPrecedence r = "(" ++ s ++ ")"
+  | getOpPrecedence op < getOpPrecedence r = s
+  | otherwise = case getOpAssociativity op of
+                  AssocRight  -> s
+                  _          -> "(" ++ s ++ ")"
+\end{code}
 
 Wir nutzen also die Informationen aus der Operatortabelle um zu entscheiden, ob
 Klammern gesetzt werden müssen oder nicht. Mit diesen Funktionen können wir
 schon einen Pretty Printer für \Rec Ausdrücke angeben:
 
-> pprExp :: Exp -> String
-> pprExp (Num n) = show n
-> pprExp (Var v) = v
-> pprExp (Ap op [a, b])
->   | op `elem` operators
->   = case [a, b] of
->       [Num  _, Num  _] -> pprExp a ++ space op ++ pprExp b
->       [Num  _, Var  _] -> pprExp a ++ space op ++ pprExp b
->       [Var  _, Num  _] -> pprExp a ++ space op ++ pprExp b
->       [Var  _, Var  _] -> pprExp a ++ space op ++ pprExp b
->       [Ap l _, Num  _] ->
->         parensOrNotL op l (pprExp a) ++ space op ++ pprExp b
->       [Ap l _, Var  _] ->
->         parensOrNotL op l (pprExp a) ++ space op ++ pprExp b
->       [Num  _, Ap r _] ->
->         pprExp a ++ space op ++ parensOrNotR op r (pprExp b)
->       [Var  _, Ap r _] ->
->         pprExp a ++ space op ++ parensOrNotR op r (pprExp b)
->       [Ap l _, Ap r _] ->
->         parensOrNotL op l (pprExp a) ++ space op ++ parensOrNotR op r (pprExp b)
->       _                ->
->         "(" ++ pprExp a ++ space op ++ pprExp b ++ ")"
->   | otherwise = op ++ "(" ++ pprExp a ++ ", " ++ pprExp b ++ ")"
->   where
->   space "^" = "^"
->   space op  = " " ++ op ++ " "
-> pprExp (Ap f es)
->   = f ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
-> pprExp (LAp e es)
->   = "(" ++ pprExp e ++ ")" ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
-> pprExp (Lam _ x e)
->   = "\\" ++ x ++ ". " ++ pprExp e
-> pprExp (If e1 e2 e3)
->   = "if " ++ pprExp e1
->           ++ " then " ++ pprExp e2
->           ++ " else " ++ pprExp e3
+\begin{code}
+pprExp :: Exp -> String
+pprExp (Num n) = show n
+pprExp (Var v) = v
+pprExp (Ap op [a, b])
+  | op `elem` operators
+  = case [a, b] of
+      [Num  _, Num  _] -> pprExp a ++ space op ++ pprExp b
+      [Num  _, Var  _] -> pprExp a ++ space op ++ pprExp b
+      [Var  _, Num  _] -> pprExp a ++ space op ++ pprExp b
+      [Var  _, Var  _] -> pprExp a ++ space op ++ pprExp b
+      [Ap l _, Num  _] ->
+        parensOrNotL op l (pprExp a) ++ space op ++ pprExp b
+      [Ap l _, Var  _] ->
+        parensOrNotL op l (pprExp a) ++ space op ++ pprExp b
+      [Num  _, Ap r _] ->
+        pprExp a ++ space op ++ parensOrNotR op r (pprExp b)
+      [Var  _, Ap r _] ->
+        pprExp a ++ space op ++ parensOrNotR op r (pprExp b)
+      [Ap l _, Ap r _] ->
+        parensOrNotL op l (pprExp a) ++ space op ++ parensOrNotR op r (pprExp b)
+      _                ->
+        "(" ++ pprExp a ++ space op ++ pprExp b ++ ")"
+  | otherwise = op ++ "(" ++ pprExp a ++ ", " ++ pprExp b ++ ")"
+  where
+  space "^" = "^"
+  space op  = " " ++ op ++ " "
+pprExp (Ap f es)
+  = f ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
+pprExp (LAp e es)
+  = "(" ++ pprExp e ++ ")" ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
+pprExp (Lam _ x e)
+  = "\\" ++ x ++ ". " ++ pprExp e
+pprExp (If e1 e2 e3)
+  = "if " ++ pprExp e1
+          ++ " then " ++ pprExp e2
+          ++ " else " ++ pprExp e3
+\end{code}
 
 Jetzt ist es ein leichtes einen Pretty Printer für Funktionsdefinitionen und
 für das gesamte Programm zu schreiben:
 
-> pprDef :: Def -> String
-> pprDef (name, args, rhs)
->   = name ++ "(" ++ intercalate ", " args ++ ")" ++ " := " ++ pprExp rhs
->
-> pprint :: Program -> String
-> pprint = intercalate ";\n" . map pprDef
+\begin{code}
+pprDef :: Def -> String
+pprDef (name, args, rhs)
+  = name ++ "(" ++ intercalate ", " args ++ ")" ++ " := " ++ pprExp rhs
+pprint :: Program -> String
+pprint = intercalate ";\n" . map pprDef
+\end{code}
 
 
 \subsection{Parser}
@@ -323,34 +336,36 @@ Stattdessen greifen wir auf einige komfortable Hilfskonstrukte von Parsec
 zurück. Im Folgenden wird ein Lexer-Stil und die verwendeten Tokens
 beschrieben, sowie eine Reihe Hilfsparser definiert:
 
-> lexDef
->   = Token.LanguageDef
->   { Token.commentStart    = "/*"
->   , Token.commentEnd      = "*/"
->   , Token.commentLine     = "//"
->   , Token.nestedComments  = True
->   , Token.identStart      = letter
->   , Token.identLetter     = alphaNum <|> oneOf "_"
->   , Token.opStart         = Token.opLetter lexDef
->   , Token.opLetter        = oneOf (concat (Token.reservedOpNames lexDef))
->   , Token.reservedOpNames = ":=" : operators
->   , Token.reservedNames   = [ "if", "then", "else" ]
->   , Token.caseSensitive   = True
->   }
->
-> lexer = Token.makeTokenParser lexDef
->
-> parens     = Token.parens lexer
-> semiSep1   = Token.semiSep1 lexer
-> commaSep   = Token.commaSep lexer
-> reserved   = Token.reserved lexer
-> reservedOp = Token.reservedOp lexer
-> identifier = Token.identifier lexer
-> natural    = Token.natural lexer
-> whiteSpace = Token.whiteSpace lexer
-> symbol     = Token.symbol lexer
+\begin{code}
+lexDef
+  = Token.LanguageDef
+  { Token.commentStart    = "/*"
+  , Token.commentEnd      = "*/"
+  , Token.commentLine     = "//"
+  , Token.nestedComments  = True
+  , Token.identStart      = letter
+  , Token.identLetter     = alphaNum <|> oneOf "_"
+  , Token.opStart         = Token.opLetter lexDef
+  , Token.opLetter        = oneOf (concat (Token.reservedOpNames lexDef))
+  , Token.reservedOpNames = ":=" : operators
+  , Token.reservedNames   = [ "if", "then", "else" ]
+  , Token.caseSensitive   = True
+  }
+lexer = Token.makeTokenParser lexDef
+parens     = Token.parens lexer
+semiSep1   = Token.semiSep1 lexer
+commaSep   = Token.commaSep lexer
+reserved   = Token.reserved lexer
+reservedOp = Token.reservedOp lexer
+identifier = Token.identifier lexer
+natural    = Token.natural lexer
+whiteSpace = Token.whiteSpace lexer
+symbol     = Token.symbol lexer
+\end{code}
 
-> type Parser a = GenParser Char Int a
+\begin{code}
+type Parser a = GenParser Char Int a
+\end{code}
 
 Kommen wir nun zum eigentlichen Parsen. Die Funktion |parse| erhält als Eingabe
 den Programmtext und liefert entweder den entsprechenden Wert vom Typ |Program|
@@ -361,11 +376,12 @@ Datentyp umschlossen. |mkStdParser| ist hierbei eine importierte Hilfsfunktion.
 Im Gegensatz zu |parse| wirft |parse'| einen Laufzeitfehler bei invalider
 Eingabe.
 
-> parse :: String -> Either String Program
-> parse = mkStdParser pProgram 1 whiteSpace
->
-> parse' :: String -> Program
-> parse' = mkStdParser' pProgram 1 whiteSpace
+\begin{code}
+parse :: String -> Either String Program
+parse = mkStdParser pProgram 1 whiteSpace
+parse' :: String -> Program
+parse' = mkStdParser' pProgram 1 whiteSpace
+\end{code}
 
 Rufen wir uns noch einmal die Syntaxdefinition von \Rec ins Gedächtnis. Diese
 können ziemlich direkt nach Haskell übersetzt werden. Betrachten wir zum
@@ -380,16 +396,17 @@ $\l fn \r$    &$\to$&     $\l var \r$($\l var_1 \r$,$\ldots$,$\l var_n \r$)
 
 Diese werden folgendermaßen übersetzt:
 
-> pProgram :: Parser Program
-> pProgram = semiSep1 pFn
->
-> pFn :: Parser Def
-> pFn = do
->   name <- identifier
->   args <- parens $ commaSep identifier
->   reservedOp ":="
->   expr <- pExp
->   return $ (name, args, expr)
+\begin{code}
+pProgram :: Parser Program
+pProgram = semiSep1 pFn
+pFn :: Parser Def
+pFn = do
+  name <- identifier
+  args <- parens $ commaSep identifier
+  reservedOp ":="
+  expr <- pExp
+  return $ (name, args, expr)
+\end{code}
 
 Leider kann nicht jede Produktion so direkt übersetzt werden - insbesondere im
 Falle von Linksrekursion. Zur Veranschaulichung soll die Produktion für
@@ -415,75 +432,75 @@ der die angegebene Priorität und Assoziativität korrekt beachtet. Wir erinnern
 uns zudem an die Operatortabelle von \Rec$\!\!$; diese kann ziemlich direkt
 übersetzt werden:
 
-> pExp :: Parser Exp
-> pExp = buildExpressionParser opTable pTerm
->   where
->   opTable =
->     [ [ op "^"  AssocRight ]
->     , [ op "*"  AssocLeft, op "/"  AssocLeft ]
->     , [ op "+"  AssocLeft, op "-"  AssocLeft ]
->     , [ op "%"  AssocLeft ]
->     , [ op "="  AssocNone
->       , op "!=" AssocNone
->       , op "<"  AssocNone
->       , op "<=" AssocNone
->       , op ">"  AssocNone
->       , op ">=" AssocNone
->       ]
->     , [ op "&&" AssocRight ]
->     , [ op "||" AssocRight ]
->     ]
->   op name = Infix (reservedOp name >> return (\x y -> Ap name [x, y]))
->
-> pTerm = pLam <|> try pLAp <|> try pAp <|> try pIf <|> pVar <|> pNum <|> parens pExp <?> "term"
+\begin{code}
+pExp :: Parser Exp
+pExp = buildExpressionParser opTable pTerm
+  where
+  opTable =
+    [ [ op "^"  AssocRight ]
+    , [ op "*"  AssocLeft, op "/"  AssocLeft ]
+    , [ op "+"  AssocLeft, op "-"  AssocLeft ]
+    , [ op "%"  AssocLeft ]
+    , [ op "="  AssocNone
+      , op "!=" AssocNone
+      , op "<"  AssocNone
+      , op "<=" AssocNone
+      , op ">"  AssocNone
+      , op ">=" AssocNone
+      ]
+    , [ op "&&" AssocRight ]
+    , [ op "||" AssocRight ]
+    ]
+  op name = Infix (reservedOp name >> return (\x y -> Ap name [x, y]))
+pTerm = pLam <|> try pLAp <|> try pAp <|> try pIf <|> pVar <|> pNum <|> parens pExp <?> "term"
+\end{code}
 
 Hier nun noch die restlichen Parser:
 
-> pLam = do
->   i <- getState
->   updateState succ
->   _ <- symbol "\\"
->   x <- identifier
->   _ <- symbol "."
->   e <- pExp
->   return $ Lam i x e
->
+\begin{code}
+pLam = do
+  i <- getState
+  updateState succ
+  _ <- symbol "\\"
+  x <- identifier
+  _ <- symbol "."
+  e <- pExp
+  return $ Lam i x e
+\end{code}
 
 TODO: Kommaseparierte Elemente
 
-> pLAp =
->     do {l <- try pAp <|> try (parens $ pLam) <|> try pVar
->        ;pars <- many1 $ (parens pExp)
->        ;return $ mkLApChain (reverse (l:pars))
->        }
->     <|>
->     do {l <- parens pExp
->        ;args <- parens $ commaSep pExp
->        ;return $ LAp l args
->        }
->    where mkLApChain [e]    = e
->          mkLApChain (e:es) = LAp (mkLApChain es) [e]
-> 
->
-> pAp = do
->   fn <- identifier
->   args <- parens $ commaSep pExp
->   return $ Ap fn args
->
-> pIf = do
->   reserved "if"
->   e1 <- pExp
->   reserved "then"
->   e2 <- pExp
->   reserved "else"
->   e3 <- pExp
->   return $ If e1 e2 e3
->
-> pVar :: Parser Exp
-> pVar = liftM Var (identifier <?> "variable")
->
-> pNum :: Parser Exp
-> pNum = liftM Num (natural <?> "number")
+\begin{code}
+pLAp =
+    do {l <- try pAp <|> try (parens $ pLam) <|> try pVar
+       ;pars <- many1 $ (parens pExp)
+       ;return $ mkLApChain (reverse (l:pars))
+       }
+    <|>
+    do {l <- parens pExp
+       ;args <- parens $ commaSep pExp
+       ;return $ LAp l args
+       }
+   where mkLApChain [e]    = e
+         mkLApChain (e:es) = LAp (mkLApChain es) [e]
+
+pAp = do
+  fn <- identifier
+  args <- parens $ commaSep pExp
+  return $ Ap fn args
+pIf = do
+  reserved "if"
+  e1 <- pExp
+  reserved "then"
+  e2 <- pExp
+  reserved "else"
+  e3 <- pExp
+  return $ If e1 e2 e3
+pVar :: Parser Exp
+pVar = liftM Var (identifier <?> "variable")
+pNum :: Parser Exp
+pNum = liftM Num (natural <?> "number")
+\end{code}
 
 
 \subsection{Übersetzung nach Goto}
@@ -500,11 +517,12 @@ aller Ausdrücke die sich in den Funktionskörpern befinden und zwar entspricht
 ein Listeneintrag der rechten Seite einer Funktionsdefinition. `Rhss` steht
 hierbei für `Right hand sides`.
 
-> getDefNames :: Program -> [Name]
-> getDefNames p = [ name | (name, _, _) <- p ]
->
-> getDefRhss :: Program -> [Exp]
-> getDefRhss p = [ exp | (_, _, exp) <- p ]
+\begin{code}
+getDefNames :: Program -> [Name]
+getDefNames p = [ name | (name, _, _) <- p ]
+getDefRhss :: Program -> [Exp]
+getDefRhss p = [ exp | (_, _, exp) <- p ]
+\end{code}
 
 |getCalledFnNames| liefert bei Eingabe einer Liste von Ausdrücken eine Liste
 von allen Bezeichnern, die innerhalb der Ausdrücke vorkommen. Diese Funktion
@@ -512,48 +530,54 @@ wird später unter anderem dafür nützlich sein, Spezialcode nativer Operatione
 wie `$+$` nur dann in das generierte Goto Programm einzubinden, wenn sie auch
 wirklich benutzt worden sind.
 
-> getCalledFnNames :: [Exp] -> [Name]
-> getCalledFnNames [] = []
-> getCalledFnNames (Num _:rest) = getCalledFnNames rest
-> getCalledFnNames (Var _:rest) = getCalledFnNames rest
-> getCalledFnNames (Ap fn args:rest)
->   = fn : getCalledFnNames args ++ getCalledFnNames rest
-> getCalledFnNames (Lam _ _ e:rest)
->   = getCalledFnNames [e] ++ getCalledFnNames rest
-> getCalledFnNames (LAp e args:rest)
->   = getCalledFnNames [e] ++ getCalledFnNames args ++ getCalledFnNames rest
-> getCalledFnNames (If e1 e2 e3:rest)
->   = getCalledFnNames [e1, e2, e3] ++ getCalledFnNames rest
-
-TODO 
-
-> getNames :: [Exp] -> [Name]
-> getNames [] = []
-> getNames (Num _:rest) = getNames rest
-> getNames (Var v:rest) = v : getNames rest
-> getNames (Ap fn args:rest)
->   = fn : getNames args ++ getNames rest
-> getNames (Lam _ x e:rest)
->   = x : getNames [e] ++ getNames rest
-> getNames (LAp e args:rest)
->   = getNames [e] ++ getNames args ++ getNames rest
-> getNames (If e1 e2 e3:rest)
->   = getNames [e1, e2, e3] ++ getNames rest
+\begin{code}
+getCalledFnNames :: [Exp] -> [Name]
+getCalledFnNames [] = []
+getCalledFnNames (Num _:rest) = getCalledFnNames rest
+getCalledFnNames (Var _:rest) = getCalledFnNames rest
+getCalledFnNames (Ap fn args:rest)
+  = fn : getCalledFnNames args ++ getCalledFnNames rest
+getCalledFnNames (Lam _ _ e:rest)
+  = getCalledFnNames [e] ++ getCalledFnNames rest
+getCalledFnNames (LAp e args:rest)
+  = getCalledFnNames [e] ++ getCalledFnNames args ++ getCalledFnNames rest
+getCalledFnNames (If e1 e2 e3:rest)
+  = getCalledFnNames [e1, e2, e3] ++ getCalledFnNames rest
+\end{code}
 
 TODO
 
-> getFreeNames :: [Exp] -> [Name]
-> getFreeNames [] = []
-> getFreeNames (Num _:rest) = getFreeNames rest
-> getFreeNames (Var v:rest) = v : getFreeNames rest
-> getFreeNames (Ap fn args:rest)
->   = fn : getFreeNames args ++ getFreeNames rest
-> getFreeNames (Lam _ _ _:rest)
->   = getFreeNames rest
-> getFreeNames (LAp e args:rest)
->   = getFreeNames [e] ++ getFreeNames args ++ getFreeNames rest
-> getFreeNames (If e1 e2 e3:rest)
->   = getFreeNames [e1, e2, e3] ++ getFreeNames rest
+\begin{code}
+getNames :: [Exp] -> [Name]
+getNames [] = []
+getNames (Num _:rest) = getNames rest
+getNames (Var v:rest) = v : getNames rest
+getNames (Ap fn args:rest)
+  = fn : getNames args ++ getNames rest
+getNames (Lam _ x e:rest)
+  = x : getNames [e] ++ getNames rest
+getNames (LAp e args:rest)
+  = getNames [e] ++ getNames args ++ getNames rest
+getNames (If e1 e2 e3:rest)
+  = getNames [e1, e2, e3] ++ getNames rest
+\end{code}
+
+TODO
+
+\begin{code}
+getFreeNames :: [Exp] -> [Name]
+getFreeNames [] = []
+getFreeNames (Num _:rest) = getFreeNames rest
+getFreeNames (Var v:rest) = v : getFreeNames rest
+getFreeNames (Ap fn args:rest)
+  = fn : getFreeNames args ++ getFreeNames rest
+getFreeNames (Lam _ _ _:rest)
+  = getFreeNames rest
+getFreeNames (LAp e args:rest)
+  = getFreeNames [e] ++ getFreeNames args ++ getFreeNames rest
+getFreeNames (If e1 e2 e3:rest)
+  = getFreeNames [e1, e2, e3] ++ getFreeNames rest
+\end{code}
 
 
 |findDef| liefert bei Eingabe eines Funktionsnamens und eines \Rec Programms
@@ -564,11 +588,13 @@ Definition der `\lstinline[language=Rec]$main$` Funktion zu finden, da ja nicht
 vorgeschrieben ist, an welcher Stelle im Quellcode sich die Definition befinden
 muss.
 
-> findDef :: Name -> Program -> Def
-> findDef _ [] = error "Impossible! Definition not found!"
-> findDef n ((n', args, exp):ps)
->   | n == n'   = (n', args, exp)
->   | otherwise = findDef n ps
+\begin{code}
+findDef :: Name -> Program -> Def
+findDef _ [] = error "Impossible! Definition not found!"
+findDef n ((n', args, exp):ps)
+  | n == n'   = (n', args, exp)
+  | otherwise = findDef n ps
+\end{code}
 
 Um eine einzelne Funktionsdefinition zu übersetzen muss diese Funktion
 ``irgendwie'' auf ein Goto Programm abgebildet werden. Dazu erhält der
@@ -601,38 +627,45 @@ Funktionsargumente in den konkreten Variablen
 `\lstinline[language=Goto]$a1,a2,...$` zwischenspeichert. |genArgSequence|
 leistet dieses:
 
-> genArgSequence :: Int -> G.Program
-> genArgSequence 0 = mempty
-> genArgSequence numberOfArgs
->   = G.Seq $ map f [1..numberOfArgs]
->   where
->   f i = G.Peek ('a':show i)
->         $ G.AOp "-" (G.Var "fp") (G.Num $ toInteger (numberOfArgs - i + 1))
+\begin{code}
+genArgSequence :: Int -> G.Program
+genArgSequence 0 = mempty
+genArgSequence numberOfArgs
+  = G.Seq $ map f [1..numberOfArgs]
+  where
+  f i = G.Peek ('a':show i)
+        $ G.AOp "-" (G.Var "fp") (G.Num $ toInteger (numberOfArgs - i + 1))
+\end{code}
 
 TODO
 
-> genHArgSequence :: Int -> G.Program
-> genHArgSequence 0 = mempty
-> genHArgSequence numberOfArgs
->   = G.Seq $ map f [1..numberOfArgs]
->   where
->   f i = G.PeekHeap ('h':show i)
->         $ G.AOp "+" (G.Var "h0") (G.Num $ toInteger i)
+\begin{code}
+genHArgSequence :: Int -> G.Program
+genHArgSequence 0 = mempty
+genHArgSequence numberOfArgs
+  = G.Seq $ map f [1..numberOfArgs]
+  where
+  f i = G.PeekHeap ('h':show i)
+        $ G.AOp "+" (G.Var "h0") (G.Num $ toInteger i)
+\end{code}
 
 Wenn wir uns dazu auf machen den Funktionsrumpf zu übersetzen, dann müssen
 wir den formalen Parametern einer \Rec Definition positionell die
 entsprechenden Goto Variablen `\lstinline[language=Goto]$a1,a2,...$` zuordnen.
 |mkParamMap| erzeugt diese Zuordnung:
 
-> type ParamMap = M.Map Name Name
->
-> mkParamMap :: [Name] -> ParamMap
-> mkParamMap args = M.fromList $ zip args $ map ("a"++) $ map show [1..]
+\begin{code}
+type ParamMap = M.Map Name Name
+mkParamMap :: [Name] -> ParamMap
+mkParamMap args = M.fromList $ zip args $ map ("a"++) $ map show [1..]
+\end{code}
 
 TODO
 
-> mkFreeMap :: [Name] -> ParamMap
-> mkFreeMap args = M.fromList $ zip args $ map ("h"++) $ map show [1..]
+\begin{code}
+mkFreeMap :: [Name] -> ParamMap
+mkFreeMap args = M.fromList $ zip args $ map ("h"++) $ map show [1..]
+\end{code}
 
 TODO: genCallSequence zu genExpSequence
 
@@ -649,31 +682,35 @@ Argumentliste des |AP| Konstruktors verwendet wird und ohne die
 Verlistifizierung würden zwei Funktionen benötigt werden, die ohnehin fast das
 selbe leisten würden.
 
-> genCallSequence :: [Name] -> ParamMap -> ParamMap -> [Exp] -> G.Program
-> genCallSequence _ _ _ []
->   = mempty
-> genCallSequence fnNames paramMap freeMap (Num n : rest)
->   =  G.Push (G.Num n)
->   <> genCallSequence fnNames paramMap freeMap rest
+\begin{code}
+genCallSequence :: [Name] -> ParamMap -> ParamMap -> [Exp] -> G.Program
+genCallSequence _ _ _ []
+  = mempty
+genCallSequence fnNames paramMap freeMap (Num n : rest)
+  =  G.Push (G.Num n)
+  <> genCallSequence fnNames paramMap freeMap rest
+\end{code}
 
 Assoziiere Nummern zu Funktionsdefinitionen, d.h. Zeiger auf
 Funktionsdefinitionen, sodass im GOTO-Programm anhand dieser Nummer auf eine
 bestimmte Funktionsdefinition gesprungen werden kann.
 
-> genCallSequence fnNames paramMap freeMap (Var a : rest)
->   =  mempty
->   <> case M.lookup a freeMap of
->        Just h  -> G.Push $ G.Var h
->        Nothing ->
->          case M.lookup a paramMap of
->            Just x  -> G.Push $ G.Var x
->            Nothing -> error "Blow up!"
->   {--
->   <> case M.lookup a paramMap of
->        Just x  -> G.Push $ G.Var x
->        Nothing -> G.Push $ G.Num $ toInteger $ fromJust $ elemIndex a fnNames
->   --}
->   <> genCallSequence fnNames paramMap freeMap rest
+\begin{code}
+genCallSequence fnNames paramMap freeMap (Var a : rest)
+  =  mempty
+  <> case M.lookup a freeMap of
+       Just h  -> G.Push $ G.Var h
+       Nothing ->
+         case M.lookup a paramMap of
+           Just x  -> G.Push $ G.Var x
+           Nothing -> error "Blow up!"
+  {--
+  <> case M.lookup a paramMap of
+       Just x  -> G.Push $ G.Var x
+       Nothing -> G.Push $ G.Num $ toInteger $ fromJust $ elemIndex a fnNames
+  --}
+  <> genCallSequence fnNames paramMap freeMap rest
+\end{code}
 
 Die Übersetzung atomarer Ausdrücke gestaltet sich problemlos. Bei der
 Übersetzung eines Funktionsaufrufs muss jedoch unbedingt darauf geachtet werden
@@ -690,103 +727,115 @@ Zurücksetzen überflüssig machen würde. Spätestens jedoch bei rekursiven
 Aufrufen sollte auffallen, dass das so nicht funktioniert.
 }
 
-> genCallSequence fnNames paramMap freeMap (Ap fn args : rest)
->   =  genCallSequence fnNames paramMap freeMap args
->   <> case M.lookup fn freeMap of
->        Just h  ->  mempty
->                 <> G.CallClosure (G.Var h) (length args)
->                 <> (if (M.size freeMap) /= 0
->                        then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
->                        else mempty)
->                 <> genHArgSequence (M.size freeMap) -- reset free vars
->        Nothing ->
->          case M.lookup fn paramMap of
->            Just a  -> G.CallClosure (G.Var a) (length args)
->            Nothing -> G.Call (labelizeIfOp fnNames fn) (length args)
->   -- <> genHArgSequence (M.size freeMap) -- reset free vars
->   <> genArgSequence (M.size paramMap) -- reset args
->   <> genCallSequence fnNames paramMap freeMap rest
+\begin{code}
+genCallSequence fnNames paramMap freeMap (Ap fn args : rest)
+  =  genCallSequence fnNames paramMap freeMap args
+  <> case M.lookup fn freeMap of
+       Just h  ->  mempty
+                <> G.CallClosure (G.Var h) (length args)
+                <> (if (M.size freeMap) /= 0
+                       then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+                       else mempty)
+                <> genHArgSequence (M.size freeMap) -- reset free vars
+       Nothing ->
+         case M.lookup fn paramMap of
+           Just a  -> G.CallClosure (G.Var a) (length args)
+           Nothing -> G.Call (labelizeIfOp fnNames fn) (length args)
+  -- <> genHArgSequence (M.size freeMap) -- reset free vars
+  <> genArgSequence (M.size paramMap) -- reset args
+  <> genCallSequence fnNames paramMap freeMap rest
+\end{code}
 
-> {--genCallSequence fnNames paramMap freeMap (Lam i x (Lam j y e) : rest)
->   =  G.Closurize i (map (G.Var . (\x->lookup' x paramMap)) free)
->   <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength free)))
->   <> G.Call ("lambda" ++ show j) (length [y])
->   <> genArgSequence (M.size paramMap) -- reset args
->   <> genCallSequence fnNames paramMap freeMap rest
->   where free = (M.keys paramMap) \\ [x] `intersect` (getNames [e])
->   --}
+\begin{code}
+{--genCallSequence fnNames paramMap freeMap (Lam i x (Lam j y e) : rest)
+  =  G.Closurize i (map (G.Var . (\x->lookup' x paramMap)) free)
+  <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength free)))
+  <> G.Call ("lambda" ++ show j) (length [y])
+  <> genArgSequence (M.size paramMap) -- reset args
+  <> genCallSequence fnNames paramMap freeMap rest
+  where free = (M.keys paramMap) \\ [x] `intersect` (getNames [e])
+  --}
+\end{code}
 
-> genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
->   =  G.Closurize i
->        (map (G.Var . (\x -> case M.lookup x freeMap of
->                               Just v  -> v
->                               Nothing -> lookup' x paramMap))
->             (sort (free1 ++ free2))
->        )
->   <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength (free1++free2))))
->   <> genCallSequence fnNames paramMap freeMap rest
->   where free1 = (((M.keys paramMap) \\ [x]) `intersect` (getNames [e])) \\ free2
->         free2 = ((M.keys freeMap) \\ [x]) `intersect` (getNames [e])
+\begin{code}
+genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
+  =  G.Closurize i
+       (map (G.Var . (\x -> case M.lookup x freeMap of
+                              Just v  -> v
+                              Nothing -> lookup' x paramMap))
+            (sort (free1 ++ free2))
+       )
+  <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength (free1++free2))))
+  <> genCallSequence fnNames paramMap freeMap rest
+  where free1 = (((M.keys paramMap) \\ [x]) `intersect` (getNames [e])) \\ free2
+        free2 = ((M.keys freeMap) \\ [x]) `intersect` (getNames [e])
+\end{code}
 
-> {--genCallSequence fnNames paramMap freeMap (LAp l@(Lam i _ _) args : rest)
->   =  mempty
->   <> genCallSequence fnNames paramMap freeMap args
->   <> genCallSequence fnNames paramMap freeMap [l]
->   <> G.Call ("lambda" ++ show i) (length args)
->   <> genArgSequence (M.size paramMap) -- reset args
->   <> genCallSequence fnNames paramMap freeMap rest
->   --}
+\begin{code}
+{--genCallSequence fnNames paramMap freeMap (LAp l@(Lam i _ _) args : rest)
+  =  mempty
+  <> genCallSequence fnNames paramMap freeMap args
+  <> genCallSequence fnNames paramMap freeMap [l]
+  <> G.Call ("lambda" ++ show i) (length args)
+  <> genArgSequence (M.size paramMap) -- reset args
+  <> genCallSequence fnNames paramMap freeMap rest
+  --}
+\end{code}
 
-> {--genCallSequence fnNames paramMap freeMap (LAp l@(Ap _ _) args : rest)
->   =  mempty
->   <> genCallSequence fnNames paramMap freeMap args
->   <> genCallSequence fnNames paramMap freeMap [l]
->   <> G.Pop "t" -- return value, i.e. heap adress of closure
->   <> G.CallClosure (G.Var "t") (length args)
->   <> genArgSequence (M.size paramMap) -- reset args
->   <> genCallSequence fnNames paramMap freeMap rest
->   --}
->
->
-> genCallSequence fnNames paramMap freeMap (LAp e1@(Ap _ [(Lam _ _ _)]) [e2@(Ap _ _)] : rest)
->   =  mempty
->   <> genCallSequence fnNames paramMap freeMap [e2]
->   <> genCallSequence fnNames paramMap freeMap [e1]
->   <> G.Pop "t" -- return value, i.e. heap adress of closure
->   <> G.CallClosure (G.Var "t") 1
->   <> (if (M.size freeMap) /= 0
->          then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
->          else mempty)
->   <> genHArgSequence (M.size freeMap) -- reset free vars
->   <> genArgSequence (M.size paramMap) -- reset args
->   <> genCallSequence fnNames paramMap freeMap rest
+\begin{code}
+{--genCallSequence fnNames paramMap freeMap (LAp l@(Ap _ _) args : rest)
+  =  mempty
+  <> genCallSequence fnNames paramMap freeMap args
+  <> genCallSequence fnNames paramMap freeMap [l]
+  <> G.Pop "t" -- return value, i.e. heap adress of closure
+  <> G.CallClosure (G.Var "t") (length args)
+  <> genArgSequence (M.size paramMap) -- reset args
+  <> genCallSequence fnNames paramMap freeMap rest
+  --}
+genCallSequence fnNames paramMap freeMap (LAp e1@(Ap _ [(Lam _ _ _)]) [e2@(Ap _ _)] : rest)
+  =  mempty
+  <> genCallSequence fnNames paramMap freeMap [e2]
+  <> genCallSequence fnNames paramMap freeMap [e1]
+  <> G.Pop "t" -- return value, i.e. heap adress of closure
+  <> G.CallClosure (G.Var "t") 1
+  <> (if (M.size freeMap) /= 0
+         then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+         else mempty)
+  <> genHArgSequence (M.size freeMap) -- reset free vars
+  <> genArgSequence (M.size paramMap) -- reset args
+  <> genCallSequence fnNames paramMap freeMap rest
+\end{code}
 
-> genCallSequence fnNames paramMap freeMap (LAp e1@(Ap _ [_]) [e2@(Ap _ [_])] : rest)
->   =  mempty
->   <> genCallSequence fnNames paramMap freeMap [e1]
->   <> genCallSequence fnNames paramMap freeMap [e2]
->   <> G.Pop "t" -- return value, i.e. heap adress of closure
->   <> G.CallClosure (G.Var "t") 1
->   <> (if (M.size freeMap) /= 0
->          then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
->          else mempty)
->   <> genHArgSequence (M.size freeMap) -- reset free vars
->   <> genArgSequence (M.size paramMap) -- reset args
->   <> genCallSequence fnNames paramMap freeMap rest
+\begin{code}
+genCallSequence fnNames paramMap freeMap (LAp e1@(Ap _ [_]) [e2@(Ap _ [_])] : rest)
+  =  mempty
+  <> genCallSequence fnNames paramMap freeMap [e1]
+  <> genCallSequence fnNames paramMap freeMap [e2]
+  <> G.Pop "t" -- return value, i.e. heap adress of closure
+  <> G.CallClosure (G.Var "t") 1
+  <> (if (M.size freeMap) /= 0
+         then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+         else mempty)
+  <> genHArgSequence (M.size freeMap) -- reset free vars
+  <> genArgSequence (M.size paramMap) -- reset args
+  <> genCallSequence fnNames paramMap freeMap rest
+\end{code}
 
 
-> genCallSequence fnNames paramMap freeMap (LAp e args : rest)
->   =  mempty
->   <> genCallSequence fnNames paramMap freeMap args
->   <> genCallSequence fnNames paramMap freeMap [e]
->   <> G.Pop "t" -- return value, i.e. heap adress of closure
->   <> G.CallClosure (G.Var "t") (length args)
->   <> (if (M.size freeMap) /= 0
->          then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
->          else mempty)
->   <> genHArgSequence (M.size freeMap) -- reset free vars
->   <> genArgSequence (M.size paramMap) -- reset args
->   <> genCallSequence fnNames paramMap freeMap rest
+\begin{code}
+genCallSequence fnNames paramMap freeMap (LAp e args : rest)
+  =  mempty
+  <> genCallSequence fnNames paramMap freeMap args
+  <> genCallSequence fnNames paramMap freeMap [e]
+  <> G.Pop "t" -- return value, i.e. heap adress of closure
+  <> G.CallClosure (G.Var "t") (length args)
+  <> (if (M.size freeMap) /= 0
+         then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+         else mempty)
+  <> genHArgSequence (M.size freeMap) -- reset free vars
+  <> genArgSequence (M.size paramMap) -- reset args
+  <> genCallSequence fnNames paramMap freeMap rest
+\end{code}
 
 Zur Erinnerung: \emph{false} wird in \Rec als $0$ kodiert und alle anderen
 Werte sind \emph{true}. Deshalb wird der pseudo \Rec Ausdruck
@@ -794,16 +843,18 @@ Werte sind \emph{true}. Deshalb wird der pseudo \Rec Ausdruck
 `\lstinline[language=Rec]$IF 0 != 0 THEN a ELSE b END$' übersetzt. Analog für
 einzelne Variablen:
 
-> genCallSequence fnNames paramMap freeMap (If (Num n) e2 e3 : rest)
->   =  G.IfElse (G.ROp "!=" (G.Num n) (G.Num 0))
->               (genCallSequence fnNames paramMap freeMap [e2])
->               (genCallSequence fnNames paramMap freeMap [e3])
->   <> genCallSequence fnNames paramMap freeMap rest
-> genCallSequence fnNames paramMap freeMap (If (Var a) e2 e3 : rest)
->   =  G.IfElse (G.ROp "!=" (G.Var $ lookup' a paramMap) (G.Num 0))
->               (genCallSequence fnNames paramMap freeMap [e2])
->               (genCallSequence fnNames paramMap freeMap [e3])
->   <> genCallSequence fnNames paramMap freeMap rest
+\begin{code}
+genCallSequence fnNames paramMap freeMap (If (Num n) e2 e3 : rest)
+  =  G.IfElse (G.ROp "!=" (G.Num n) (G.Num 0))
+              (genCallSequence fnNames paramMap freeMap [e2])
+              (genCallSequence fnNames paramMap freeMap [e3])
+  <> genCallSequence fnNames paramMap freeMap rest
+genCallSequence fnNames paramMap freeMap (If (Var a) e2 e3 : rest)
+  =  G.IfElse (G.ROp "!=" (G.Var $ lookup' a paramMap) (G.Num 0))
+              (genCallSequence fnNames paramMap freeMap [e2])
+              (genCallSequence fnNames paramMap freeMap [e3])
+  <> genCallSequence fnNames paramMap freeMap rest
+\end{code}
 
 Im Allgemeinen kann sich im If-Kopf ein beliebiger \Rec Ausdruck befinden,
 weshalb sich in diesem Fall die Übersetzung etwas anders gestaltet. Und zwar
@@ -811,25 +862,29 @@ werden die relationalen bzw. boolschen Operatoren als Funktionen interpretiert,
 die entweder eine $0$ (\emph{false}) oder eine beliebige andere Zahl wie zum
 Beispiel $1$ (\emph{true}) liefern:
 
-> genCallSequence fnNames paramMap freeMap (If e1 e2 e3 : rest)
->   =  genCallSequence fnNames paramMap freeMap [e1]
->   <> G.Pop "t" -- return value of fn
->   <> G.IfElse (G.ROp "!=" (G.Var "t") (G.Num 0))
->               (genCallSequence fnNames paramMap freeMap [e2])
->               (genCallSequence fnNames paramMap freeMap [e3])
->   <> genCallSequence fnNames paramMap freeMap rest
+\begin{code}
+genCallSequence fnNames paramMap freeMap (If e1 e2 e3 : rest)
+  =  genCallSequence fnNames paramMap freeMap [e1]
+  <> G.Pop "t" -- return value of fn
+  <> G.IfElse (G.ROp "!=" (G.Var "t") (G.Num 0))
+              (genCallSequence fnNames paramMap freeMap [e2])
+              (genCallSequence fnNames paramMap freeMap [e3])
+  <> genCallSequence fnNames paramMap freeMap rest
+\end{code}
 
 Nun können wir endlich die Funktion beschreiben, die eine einzelne \Rec
 Definition übersetzt. Zu beachten ist, dass am Ende eines Abschnitts eine
 `\lstinline[language=Goto]$RETURN$` Anweisung vorhanden sein muss um zum
 \emph{Caller} zurückzuspringen:
 
-> genDefSection :: [Name] -> Def -> G.Program
-> genDefSection fns (name, args, exp)
->   = G.Label name
->     $  genArgSequence (length args)
->     <> genCallSequence fns (mkParamMap args) (mkFreeMap []) [exp]
->     <> G.Return
+\begin{code}
+genDefSection :: [Name] -> Def -> G.Program
+genDefSection fns (name, args, exp)
+  = G.Label name
+    $  genArgSequence (length args)
+    <> genCallSequence fns (mkParamMap args) (mkFreeMap []) [exp]
+    <> G.Return
+\end{code}
 
 Wir haben bisher die Übersetzung nativer Operatoren etwas vernachlässigt.
 Ein \Rec Ausdruck wie `\lstinline[language=Rec]$2 + 3$' könnte eins zu eins in
@@ -885,38 +940,40 @@ eingefügt werden, deren zugehöriger Operator auch wirklich im \Rec
 Ausgangsprogramm benutzt worden ist. Der Sinn dabei ist es, das generierte
 Programm nicht unnötig lang werden zu lassen.
 
-> genOpSection :: [Name] -> [Exp] -> G.Program
-> genOpSection fns exps
->   =  foldr (<>) mempty (map genAorRorBSection calledOps)
->   where
->   calledFns = getCalledFnNames exps
->   calledOps = nub $ calledFns `intersect` operators
->   genAorRorBSection op
->     | op `elem` ["+","-","*","/","^","%"]    = genArithSection op
->     | op `elem` ["=","!=","<","<=",">",">="] = genRelSection   op
->     | op `elem` ["&&","||"]                  = genBoolSection  op
->     | otherwise                              = error "Impossible!"
->   genArithSection op
->     = G.Label (labelizeIfOp fns op)
->       $  genArgSequence 2
->       <> G.Push (G.AOp op (G.Var "a1") (G.Var "a2"))
->       <> G.Return
->   genRelSection op
->     = G.Label (labelizeIfOp fns op)
->       $  genArgSequence 2
->       <> G.IfElse (G.ROp op (G.Var "a1") (G.Var "a2"))
->                   (G.Push (G.Num 1))
->                   (G.Push (G.Num 0))
->       <> G.Return
->   genBoolSection op
->     = G.Label (labelizeIfOp fns op)
->       $  genArgSequence 2
->       <> G.IfElse (G.BOp op
->                      (G.ROp "!=" (G.Var "a1") (G.Num 0))
->                      (G.ROp "!=" (G.Var "a2") (G.Num 0)))
->                   (G.Push (G.Num 1))
->                   (G.Push (G.Num 0))
->       <> G.Return
+\begin{code}
+genOpSection :: [Name] -> [Exp] -> G.Program
+genOpSection fns exps
+  =  foldr (<>) mempty (map genAorRorBSection calledOps)
+  where
+  calledFns = getCalledFnNames exps
+  calledOps = nub $ calledFns `intersect` operators
+  genAorRorBSection op
+    | op `elem` ["+","-","*","/","^","%"]    = genArithSection op
+    | op `elem` ["=","!=","<","<=",">",">="] = genRelSection   op
+    | op `elem` ["&&","||"]                  = genBoolSection  op
+    | otherwise                              = error "Impossible!"
+  genArithSection op
+    = G.Label (labelizeIfOp fns op)
+      $  genArgSequence 2
+      <> G.Push (G.AOp op (G.Var "a1") (G.Var "a2"))
+      <> G.Return
+  genRelSection op
+    = G.Label (labelizeIfOp fns op)
+      $  genArgSequence 2
+      <> G.IfElse (G.ROp op (G.Var "a1") (G.Var "a2"))
+                  (G.Push (G.Num 1))
+                  (G.Push (G.Num 0))
+      <> G.Return
+  genBoolSection op
+    = G.Label (labelizeIfOp fns op)
+      $  genArgSequence 2
+      <> G.IfElse (G.BOp op
+                     (G.ROp "!=" (G.Var "a1") (G.Num 0))
+                     (G.ROp "!=" (G.Var "a2") (G.Num 0)))
+                  (G.Push (G.Num 1))
+                  (G.Push (G.Num 0))
+      <> G.Return
+\end{code}
 
 Da z.B. `$+$' nicht direkt als Labelbezeichner in Goto möglich ist, müssen
 eindeutige, alphanumerische Namen für die Operatoren im Goto Programm erzeugt
@@ -925,21 +982,23 @@ selben Argumente aufgerufen wird, würde sich im Allgemeinen \emph{Memoization}
 lohnen, hier verzichten wir aber darauf, da die Eingabeprogrammtexte sehr klein
 sind.}:
 
-> labelizeIfOp :: [Name] -> Name -> Name
-> labelizeIfOp defNames op
->   | op `elem` operators = head $ mkLIdStream (opToLabel op) \\ defNames
->   | otherwise           = op -- op isn't operator symbol
->   where
->   mkLIdStream l = l : map (l++) (map show [1..])
->   opToLabel op  = lookup' op $ M.fromList
->     [ ("+" , "add"), ("-" , "sub")
->     , ("*" , "mul"), ("/" , "div")
->     , ("^" , "exp"), ("%" , "mod")
->     , ("=" , "eq" ), ("!=", "neq")
->     , ("<" , "lt" ), ("<=", "leq")
->     , (">" , "gt" ), (">=", "geq")
->     , ("&&", "and"), ("||", "or" )
->     ]
+\begin{code}
+labelizeIfOp :: [Name] -> Name -> Name
+labelizeIfOp defNames op
+  | op `elem` operators = head $ mkLIdStream (opToLabel op) \\ defNames
+  | otherwise           = op -- op isn't operator symbol
+  where
+  mkLIdStream l = l : map (l++) (map show [1..])
+  opToLabel op  = lookup' op $ M.fromList
+    [ ("+" , "add"), ("-" , "sub")
+    , ("*" , "mul"), ("/" , "div")
+    , ("^" , "exp"), ("%" , "mod")
+    , ("=" , "eq" ), ("!=", "neq")
+    , ("<" , "lt" ), ("<=", "leq")
+    , (">" , "gt" ), (">=", "geq")
+    , ("&&", "and"), ("||", "or" )
+    ]
+\end{code}
 
 Bisher haben wir uns ebenfalls noch nicht überlegt wie externe Parameter
 behandelt werden sollen und überhaupt der Anfang des übersetzten Programs
@@ -954,103 +1013,113 @@ Stack befindet. Dieses wird einfach gepoppt und in
 `\lstinline[language=Goto]$x0$' gespeichert. Schliesslich wird die Rechnung mit
 dem `\lstinline[language=Goto]$HALT$'-Befehl beendet:
 
-> genExtArgsSection :: Program -> G.Program
-> genExtArgsSection defs
->   =  G.Seq (map (\i -> G.Push (G.Var $ 'x':show i)) [1..argsLen])
->   <> G.Assign "fp" (G.AOp "+" (G.Var "sp") (G.Num 1)) -- TODO: Explain why important
->   <> G.Call "main" (length mainArgs)
->   <> G.Pop "x0"
->   <> G.Halt
->   where
->   (_, mainArgs, _) = findDef "main" defs
->   argsLen = length mainArgs
+\begin{code}
+genExtArgsSection :: Program -> G.Program
+genExtArgsSection defs
+  =  G.Seq (map (\i -> G.Push (G.Var $ 'x':show i)) [1..argsLen])
+  <> G.Assign "fp" (G.AOp "+" (G.Var "sp") (G.Num 1)) -- TODO: Explain why important
+  <> G.Call "main" (length mainArgs)
+  <> G.Pop "x0"
+  <> G.Halt
+  where
+  (_, mainArgs, _) = findDef "main" defs
+  argsLen = length mainArgs
+\end{code}
 
 Endlich nun können wir alle Teile zusammenfügen und die Funktion |genGoto|
 definieren, die ein beliebiges \Rec Programm in ein semantisch äquivalentes
 Goto Programm übersetzt:
 
-> genGoto :: Program -> G.Program
-> genGoto defs = mempty
->   <> genExtArgsSection defs
->   <> G.Seq (map (genDefSection defNames) defs)
->   <> genOpSection defNames defRhss
->   <> genLamSection defNames defs
->   <> (G.Label "lamret" $ genLamRetSection defRhss)
->   where
->   defNames = getDefNames defs
->   defRhss  = getDefRhss  defs
+\begin{code}
+genGoto :: Program -> G.Program
+genGoto defs = mempty
+  <> genExtArgsSection defs
+  <> G.Seq (map (genDefSection defNames) defs)
+  <> genOpSection defNames defRhss
+  <> genLamSection defNames defs
+  <> (G.Label "lamret" $ genLamRetSection defRhss)
+  where
+  defNames = getDefNames defs
+  defRhss  = getDefRhss  defs
+\end{code}
 
-> genLamSection _ [] = mempty
-> genLamSection fnNames ((_, _, Num _) : rest)
->   = genLamSection fnNames rest
-> genLamSection fnNames ((_, _, Var _) : rest)
->   = genLamSection fnNames rest
-> genLamSection fnNames ((_, topargs, Ap _ args) : rest)
->   = let t1 = genLamSection fnNames $ map (\x->("dontcare", topargs, x)) args
->         t2 = genLamSection fnNames rest
->     in  t1 <> t2
-> genLamSection fnNames ((_, topargs, If e1 e2 e3) : rest)
->   = let t1 = genLamSection fnNames [("dontcare", topargs, e1)]
->         t2 = genLamSection fnNames [("dontcare", topargs, e2)]
->         t3 = genLamSection fnNames [("dontcare", topargs, e3)]
->         t4 = genLamSection fnNames rest
->     in  t1 <> t2 <> t3 <> t4
-> genLamSection fnNames ((_, topargs, LAp e args) : rest)
->   = let t1 = genLamSection fnNames [("dontcare", topargs, e)]
->         t2 = genLamSection fnNames $ map (\x->("dontcare", topargs, x)) args
->         t3 = genLamSection fnNames rest
->     in  t1 <> t2 <> t3
-> genLamSection fnNames ((_, topargs, Lam i args e) : rest)
->   = let t1 = G.Label ("lambda" ++ show i)
->              $  mempty
->              <> (if (length free) /= 0
->                    then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
->                    else mempty)
->              <> genHArgSequence (length free)
->              <> genArgSequence (length [args])
->              <> genCallSequence fnNames (mkParamMap [args]) (mkFreeMap free) [e]
->              <> G.Return
->         free = getFreeVars topargs [args] e
->         t2 = genLamSection fnNames [("dontcare", topargs ++ [args], e)]
->         t3 = genLamSection fnNames rest
->     in     mempty
->         <> t1
->         <> t2
->         <> t3
+\begin{code}
+genLamSection _ [] = mempty
+genLamSection fnNames ((_, _, Num _) : rest)
+  = genLamSection fnNames rest
+genLamSection fnNames ((_, _, Var _) : rest)
+  = genLamSection fnNames rest
+genLamSection fnNames ((_, topargs, Ap _ args) : rest)
+  = let t1 = genLamSection fnNames $ map (\x->("dontcare", topargs, x)) args
+        t2 = genLamSection fnNames rest
+    in  t1 <> t2
+genLamSection fnNames ((_, topargs, If e1 e2 e3) : rest)
+  = let t1 = genLamSection fnNames [("dontcare", topargs, e1)]
+        t2 = genLamSection fnNames [("dontcare", topargs, e2)]
+        t3 = genLamSection fnNames [("dontcare", topargs, e3)]
+        t4 = genLamSection fnNames rest
+    in  t1 <> t2 <> t3 <> t4
+genLamSection fnNames ((_, topargs, LAp e args) : rest)
+  = let t1 = genLamSection fnNames [("dontcare", topargs, e)]
+        t2 = genLamSection fnNames $ map (\x->("dontcare", topargs, x)) args
+        t3 = genLamSection fnNames rest
+    in  t1 <> t2 <> t3
+genLamSection fnNames ((_, topargs, Lam i args e) : rest)
+  = let t1 = G.Label ("lambda" ++ show i)
+             $  mempty
+             <> (if (length free) /= 0
+                   then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+                   else mempty)
+             <> genHArgSequence (length free)
+             <> genArgSequence (length [args])
+             <> genCallSequence fnNames (mkParamMap [args]) (mkFreeMap free) [e]
+             <> G.Return
+        free = getFreeVars topargs [args] e
+        t2 = genLamSection fnNames [("dontcare", topargs ++ [args], e)]
+        t3 = genLamSection fnNames rest
+    in     mempty
+        <> t1
+        <> t2
+        <> t3
+\end{code}
 
 It is important to have canonical order.
 
-> getFreeVars :: [Name] -> [Name] -> Exp -> [Name]
-> getFreeVars outer bound e = sort ((outer \\ bound) `intersect` (getNames [e]))
-> --getFreeVars outer bound e = (getFreeNames [e]) \\ bound
+\begin{code}
+getFreeVars :: [Name] -> [Name] -> Exp -> [Name]
+getFreeVars outer bound e = sort ((outer \\ bound) `intersect` (getNames [e]))
+--getFreeVars outer bound e = (getFreeNames [e]) \\ bound
+\end{code}
 
-> genLamRetSection [] = mempty
-> genLamRetSection (Num _ : rest)
->   = genLamRetSection rest
-> genLamRetSection (Var _ : rest)
->   = genLamRetSection rest
-> genLamRetSection (Ap _ args : rest)
->   = let t1 = genLamRetSection args
->         t2 = genLamRetSection rest
->     in  t1 <> t2
-> genLamRetSection (LAp e args : rest)
->   = let t1 = genLamRetSection [e]
->         t2 = genLamRetSection args
->         t3 = genLamRetSection rest
->     in  t1 <> t2 <> t3
-> genLamRetSection (If e1 e2 e3 : rest)
->   = let t1 = genLamRetSection [e1]
->         t2 = genLamRetSection [e2]
->         t3 = genLamRetSection [e3]
->         t4 = genLamRetSection rest
->     in  t1 <> t2 <> t3 <> t4
-> genLamRetSection (Lam i _ e : rest)
->   = let t1 = genLamRetSection [e]
->         t2 = genLamRetSection rest
->     in  mempty
->         <> (G.If (G.ROp "=" (G.Var "cp") (G.Num (toInteger i))) (G.Goto ("lambda" ++ show i)))
->         <> t1
->         <> t2
+\begin{code}
+genLamRetSection [] = mempty
+genLamRetSection (Num _ : rest)
+  = genLamRetSection rest
+genLamRetSection (Var _ : rest)
+  = genLamRetSection rest
+genLamRetSection (Ap _ args : rest)
+  = let t1 = genLamRetSection args
+        t2 = genLamRetSection rest
+    in  t1 <> t2
+genLamRetSection (LAp e args : rest)
+  = let t1 = genLamRetSection [e]
+        t2 = genLamRetSection args
+        t3 = genLamRetSection rest
+    in  t1 <> t2 <> t3
+genLamRetSection (If e1 e2 e3 : rest)
+  = let t1 = genLamRetSection [e1]
+        t2 = genLamRetSection [e2]
+        t3 = genLamRetSection [e3]
+        t4 = genLamRetSection rest
+    in  t1 <> t2 <> t3 <> t4
+genLamRetSection (Lam i _ e : rest)
+  = let t1 = genLamRetSection [e]
+        t2 = genLamRetSection rest
+    in  mempty
+        <> (G.If (G.ROp "=" (G.Var "cp") (G.Num (toInteger i))) (G.Goto ("lambda" ++ show i)))
+        <> t1
+        <> t2
+\end{code}
 
 
 Zum Abschluss wollen wir uns die vollständige Übersetzung nach Goto des
@@ -1133,16 +1202,19 @@ geschieht die Auswertung so: Zuerst wird aus dem \Rec Programm das
 entsprechende Goto Programm generiert und anschließend wird das Goto Programm
 mit dem Goto Auswerter ausgewertet.
 
-> eval :: Program -> [Integer] -> Integer
-> eval p input = G.eval (genGoto p) input
+\begin{code}
+eval :: Program -> [Integer] -> Integer
+eval p input = G.eval (genGoto p) input
+\end{code}
 
 |run| verknüpft die beiden Funktionen |parse| und |eval|. Im Gegensatz zu
 |eval| erwartet |run| also ein \Rec Programm im Klartext und liefert entweder
 die Ergebniszahl oder einen Fehlernachricht. |run'| dagegen liefert bei
 jeglichem (Parse-)Fehler als Ergebnis die Zahl $-1$.
 
-> run :: String -> [Integer] -> Either String Integer
-> run = mkStdRunner parse eval
->
-> run' :: String -> [Integer] -> Integer
-> run' = mkStdRunner' parse eval
+\begin{code}
+run :: String -> [Integer] -> Either String Integer
+run = mkStdRunner parse eval
+run' :: String -> [Integer] -> Integer
+run' = mkStdRunner' parse eval
+\end{code}
