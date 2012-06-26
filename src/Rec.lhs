@@ -639,7 +639,7 @@ bestimmte Funktionsdefinition gesprungen werden kann.
 >        Nothing ->
 >          case M.lookup a paramMap of
 >            Just x  -> G.Push $ G.Var x
->            Nothing -> G.Push $ G.Num $ toInteger $ fromJust $ elemIndex a fnNames
+>            Nothing -> error "Blow up!"
 >   {--
 >   <> case M.lookup a paramMap of
 >        Just x  -> G.Push $ G.Var x
@@ -693,8 +693,8 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 >                     (map (G.Var . (\x->lookup' x freeMap))  free2))
 >   <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength (free1++free2))))
 >   <> genCallSequence fnNames paramMap freeMap rest
->   where free1 = (M.keys paramMap) \\ [x] `intersect` (getNames [e])
->         free2 = (M.keys freeMap)  \\ [x] `intersect` (getNames [e])
+>   where free1 = (((M.keys paramMap) \\ [x]) `intersect` (getNames [e])) \\ free2
+>         free2 = ((M.keys freeMap) \\ [x]) `intersect` (getNames [e])
 
 > {--genCallSequence fnNames paramMap freeMap (LAp l@(Lam i _ _) args : rest)
 >   =  mempty
@@ -721,7 +721,10 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 >   <> genCallSequence fnNames paramMap freeMap [e]
 >   <> G.Pop "t" -- return value, i.e. heap adress of closure
 >   <> G.CallClosure (G.Var "t") (length args)
->   -- <> genHArgSequence (M.size freeMap) -- reset free vars
+>   <> (if (M.size freeMap) /= 0
+>          then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+>          else mempty)
+>   <> genHArgSequence (M.size freeMap) -- reset free vars
 >   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap freeMap rest
 

@@ -48,6 +48,7 @@
 >         , testCase "rec/lambda13" lambda13
 >         , testCase "rec/lambda14" lambda14
 >         , testCase "rec/lambda15" lambda15
+>         , testCase "rec/lambda16" lambda16
 >         ]
 >
 > parsing1 = parse' p @?= e
@@ -259,6 +260,12 @@
 > lambda15 = run' (prelude0 ++ p) [] @?= 40
 >   where
 >   p =  "main() := ((I(\\x.twice(x)))(\\x.x*2))(10)"
+>
+> lambda16 = run' (prelude0 ++ p) [] @?= 2
+>   where
+>   p =  "main() := numerify(TWO());"
+>     ++ "TWO() := \\f.\\x.f(f(x));"
+>     ++ "numerify(n) := (n(\\x.x+1))(0)"
 >
 >
 > -- Überlege ob das erlaubt sein soll (anonymous lambdas)
