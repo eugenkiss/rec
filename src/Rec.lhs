@@ -40,7 +40,7 @@ Da im Quellcode teilweise auf Bibliotheken und Hilfsfunktionen des Haskell
 
 > import Control.Monad
 > import Data.Monoid
-> import Data.List ((\\), intersect, intercalate, nub, genericLength)
+> import Data.List ((\\), intersect, intercalate, nub, genericLength, sort)
 > import Data.Maybe (fromJust)
 > import qualified Data.Map as M
 >
@@ -705,10 +705,11 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 >   --}
 
 > genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
->   =  G.Closurize i (
->        (map (G.Var . (\x->lookup' x freeMap))  (reverse free2))
->        ++
->        (map (G.Var . (\x->lookup' x paramMap)) (reverse free1))
+>   =  G.Closurize i
+>        (map (G.Var . (\x -> case M.lookup x freeMap of
+>                               Just v  -> v
+>                               Nothing -> lookup' x paramMap))
+>             (sort (free1 ++ free2))
 >        )
 >   <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength (free1++free2))))
 >   <> genCallSequence fnNames paramMap freeMap rest
@@ -733,6 +734,34 @@ Aufrufen sollte auffallen, dass das so nicht funktioniert.
 >   <> genArgSequence (M.size paramMap) -- reset args
 >   <> genCallSequence fnNames paramMap freeMap rest
 >   --}
+>
+>
+> genCallSequence fnNames paramMap freeMap (LAp e1@(Ap _ [(Lam _ _ _)]) [e2@(Ap _ _)] : rest)
+>   =  mempty
+>   <> genCallSequence fnNames paramMap freeMap [e2]
+>   <> genCallSequence fnNames paramMap freeMap [e1]
+>   <> G.Pop "t" -- return value, i.e. heap adress of closure
+>   <> G.CallClosure (G.Var "t") 1
+>   <> (if (M.size freeMap) /= 0
+>          then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+>          else mempty)
+>   <> genHArgSequence (M.size freeMap) -- reset free vars
+>   <> genArgSequence (M.size paramMap) -- reset args
+>   <> genCallSequence fnNames paramMap freeMap rest
+
+> genCallSequence fnNames paramMap freeMap (LAp e1@(Ap _ [_]) [e2@(Ap _ [_])] : rest)
+>   =  mempty
+>   <> genCallSequence fnNames paramMap freeMap [e1]
+>   <> genCallSequence fnNames paramMap freeMap [e2]
+>   <> G.Pop "t" -- return value, i.e. heap adress of closure
+>   <> G.CallClosure (G.Var "t") 1
+>   <> (if (M.size freeMap) /= 0
+>          then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
+>          else mempty)
+>   <> genHArgSequence (M.size freeMap) -- reset free vars
+>   <> genArgSequence (M.size paramMap) -- reset args
+>   <> genCallSequence fnNames paramMap freeMap rest
+
 
 > genCallSequence fnNames paramMap freeMap (LAp e args : rest)
 >   =  mempty
@@ -977,8 +1006,10 @@ Goto Programm übersetzt:
 >         <> t2
 >         <> t3
 
+It is important to have canonical order.
+
 > getFreeVars :: [Name] -> [Name] -> Exp -> [Name]
-> getFreeVars outer bound e = (outer \\ bound) `intersect` (getNames [e])
+> getFreeVars outer bound e = sort ((outer \\ bound) `intersect` (getNames [e]))
 > --getFreeVars outer bound e = (getFreeNames [e]) \\ bound
 
 > genLamRetSection [] = mempty

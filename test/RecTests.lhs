@@ -53,6 +53,7 @@
 >         , testCase "rec/lambda18" lambda18
 >         , testCase "rec/lambda19" lambda19
 >         , testCase "rec/lambda20" lambda20
+>         , testCase "rec/lambda21" lambda21
 >         ]
 >
 > parsing1 = parse' p @?= e
@@ -296,6 +297,23 @@
 >     ++ "FALSE() := \\onTrue.\\onFalse.onFalse(\\x. x);"
 >     ++ "IF0(test) := \\onTrue.\\onFalse.(test(onTrue))(onFalse);"
 >     ++ "main() := ((IF0(TRUE()))(\\x.100))(\\y.200)"
+>
+> lambda21 = run' p [] @?= 2
+>   where
+>   p =  "numerify(n) := (n(\\x.x+1))(0);"
+>     ++ "ZERO() := \\f.\\x.x;"
+>     ++ "SUCC() := \\n.\\f.\\z. f((n(f))(z));"
+>     ++ "ONE()  := (SUCC())(ZERO());"
+>     ++ "TWO()  := (SUCC())(ONE());"
+>     ++ ""
+>     ++ "VOID() := \\x. x;"
+>     ++ "NIL() := \\onEmpty.\\onPair. onEmpty(VOID());"
+>     ++ "CONS(hd) := \\tl.\\onEmpty.\\onPair.(onPair(hd))(tl);"
+>     ++ "HEAD(list) := (list(VOID()))(\\hd.\\tl.hd);"
+>     ++ "TAIL(list) := (list(VOID()))(\\hd.\\tl.tl);"
+>     ++ "l() := (CONS(ZERO()))((CONS(TWO()))(NIL()));"
+>     ++ ""
+>     ++ "main() := numerify(HEAD(TAIL(l()))) // == 2"
 >
 > -- Überlege ob das erlaubt sein soll (anonymous lambdas)
 > -- lambda5 = run' p [1] @?= 2
