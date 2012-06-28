@@ -28,8 +28,6 @@
   Syntaktischer Zucker für Listen [1,2,3] => cons, 2 : [3,4] => cons(2,[3,4])
                                   [1] ++ [2] => append([1],[2])
   Let?
-- \f g y. ist syntaktischer zuker für \f.\g.\y.
-- succ()(a, b, c) ist syntaktischer zucker für succ()(a)(b)(c)
 - Beispiele und Tests (tests nur teilweise) mit neuem syntaktischen zucker
   verbessern
 
@@ -49,3 +47,10 @@
   with my own words.
 
 - create documentation code.pdf and look that it is correctlu formatted
+- parsen von Ap und LAp kann subtile Mehrdeutigkeiten enthalten
+
+
+- Dokumentieren:
+
+  - \f g y. ist syntaktischer zuker für \f.\g.\y.
+  - succ()(a, b, c) ist syntaktischer zucker für succ()(a)(b)(c)

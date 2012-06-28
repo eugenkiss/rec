@@ -9,6 +9,8 @@ import Rec
 tests = [ testCase "rec/parsing1" parsing1
         , testCase "rec/parsing2" parsing2
         , testCase "rec/parsing3" parsing3
+        , testCase "rec/desugar1" desugar1
+        , testCase "rec/desugar2" desugar2
         , testCase "rec/basic1" basic1
         , testCase "rec/basic2" basic2
         , testCase "rec/basic3" basic3
@@ -79,8 +81,18 @@ parsing3 = parse' p @?= e
   where
   p = "main() := \\x. x + x"
   e =
-    [ ("main",   [],    Lam 1 ["x"] (Ap "+" [Var "x", Var "x"]))
+    [ ("main",   [],    Lam 1 "x" (Ap "+" [Var "x", Var "x"]))
     ]
+
+desugar1 = parse' p @?= parse' e
+  where
+  p = "main() := \\a b c. a + b + c"
+  e = "main() := \\a.\\b.\\c. a + b + c"
+
+desugar2 = parse' p @?= parse' e
+  where
+  p = "main() := (\\a b c. a+b+c)(1,2,3+3)"
+  e = "main() := (\\a.\\b.\\c. a+b+c)(1)(2)(3+3)"
 
 basic1 = run' p [] @?= 18
   where
