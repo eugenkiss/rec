@@ -2,6 +2,7 @@
 
 \newcommand{\Rec}{\textsf{Rec} }
 
+TODO:
 \Rec ist eine minimalistische funktionale Sprache deren einziger primitiver
 Datentyp $\mathbb{N}$ ist. Ein \Rec Programm, das die Fakultätsfunktion
 berechnet, sieht so aus:

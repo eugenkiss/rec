@@ -1,7 +1,48 @@
 - Direktes zuweisen von top-level funktionen als parameter ermöglichen, sodass
   nicht immer in einen lambda-ausdruck gewrappt werden muss
-- lambda sowie LAp mit mehreren parametern erlauben sowie parsen
-- funktionalen beispiele mit mklist, takewhile, sum, streams mit closures etc.
+  succ ist also syntaktischer zucker für \x1.\x2. ... \xn. succ(x1,x2,...,xn)
+  falls succ n parameter erhält
+  Falls n=0, dann steht succ für succ()
+  D.h., wenn man Programme in dem Stil schreibt:
+    succ() := \a b c. bla
+  Dann kann man im curried stil programmieren:
+    succ(a, b) == succ()(a)(b)
+
+  Falls aber
+    succ(a,b,c) := bla
+  Dann geht das nicht
+    succ == \a b c. succ(a,b,c)
+    succ() == ?
+    succ(a) == \b c. succ(a,b,c)
+
+  Überlege ob succ() := bla auch als succ := bla definiert werden kann.
+  Implement desugar subcommand that desugars rec program (only first pass is
+  done)
+  Vorher aber sugar tests schreiben!
+  Prelude! (map, cons etc.) Falls aber eine Funktion mit demselben Namen schon
+  existert, dann prelude definition *nicht* verwenden. Und prelude definitionen
+  nur einfügen, wenn sie auch benutzt werden!
+    http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.3.2
+    http://programmingpraxis.com/contents/standard-prelude/
+    http://hackage.haskell.org/packages/archive/base/latest/doc/html/Prelude.html
+  Syntaktischer Zucker für Listen [1,2,3] => cons, 2 : [3,4] => cons(2,[3,4])
+                                  [1] ++ [2] => append([1],[2])
+  Let?
+- \f g y. ist syntaktischer zuker für \f.\g.\y.
+- succ()(a, b, c) ist syntaktischer zucker für succ()(a)(b)(c)
+- Beispiele und Tests (tests nur teilweise) mit neuem syntaktischen zucker
+  verbessern
+
+- Test Push_Heap (auch in striktem Modus)
 - primitive Übersetzung nach GOTO strikt impelementieren
 - use landin paper
 - Allow LOOP and WHILE Schleifen in GOTO!
+- Mit Grep nach TODO's suchen!
+- json-tmlanguage fur rec verbessern. pathologische Fälle:
+
+    func(a, b)
+      := a + b;
+
+    func1(a,b) := b; func2(a) := a;
+- find explanation of encoding of lists like I use, so that I can explain it
+  with my own words.

@@ -21,8 +21,7 @@ module Goto
   , desugarStack
   , simplify
   , strictify
-  -- because of no cyclic
-  , getVIds
+  , getVIds -- because cyclic dependancies are disallowed
   ) where
 
 import Control.Applicative hiding ((<|>))
@@ -104,7 +103,6 @@ instance Monoid Program where
 
 \subsection{Pretty Printing}
 
-%TODO: print without redundant parantheses
 
 \begin{code}
 pprint :: Program -> String
@@ -142,6 +140,8 @@ pprint' (Closurize p args)
 pprint' (CallClosure a n)
   = text "CALL_CLOSURE" <+> text (show a) PP.<> text "," <+> text (show n)
 \end{code}
+
+%TODO: print without redundant parantheses
 
 \begin{code}
 instance Show AExp where

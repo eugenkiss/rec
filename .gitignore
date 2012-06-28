@@ -1,6 +1,7 @@
 *.pdf
 dist/*
 doc/code.tex
-src/Test.hs
 test.goto
 test.rec
+recgoto.sublime-project
+recgoto.sublime-workspace

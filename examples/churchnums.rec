@@ -1,0 +1,7 @@
+succ()      := \n.\f.\z. f(n(f)(z));
+zero()      := \f.\x.x;
+one()       := succ()(zero());
+two()       := succ()(one());
+numerify(n) := n(\x.x+1)(0);
+
+main()      := numerify(succ()(two())) // = 3

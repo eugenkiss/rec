@@ -1,0 +1,60 @@
+/* TODO:
+    http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.3.2
+    http://programmingpraxis.com/contents/standard-prelude/
+    http://hackage.haskell.org/packages/archive/base/latest/doc/html/Prelude.html
+*/
+void() := \x. x;
+nil() := \onEmpty.\onPair. onEmpty(void());
+cons(hd) := \tl.\onEmpty.\onPair.(onPair(hd))(tl);
+head(list) := (list(void()))(\hd.\tl.hd);
+tail(list) := (list(void()))(\hd.\tl.tl);
+null(list) := list(\x.1)(\x.\y.0);
+
+nth(list, n)
+  := if n = 0
+        then head(list)
+        else nth(tail(list), n-1);
+
+replicate(n, x)
+  := if n = 0
+        then nil()
+        else cons(x)(replicate(n-1, x));
+
+iterateN(n, f, x)
+  := if n = 0
+        then nil()
+        else cons(x)(iterateN(n-1, f, f(x)));
+
+map(f, list)
+  := if null(list)
+        then nil()
+        else cons(f(head(list)))(map(f, tail(list)));
+
+filter(f, list)
+  := if null(list)
+        then nil()
+        else if f(head(list))
+                then cons(head(list))(filter(f, tail(list)))
+                else filter(f, tail(list));
+
+//TODO: Wenn unten op(base)(head(xs)) steht, dann funktioniert es nicht.
+//D.h., es existiert immer noch ein Bug bei der Reihenfolge der
+//Speicherung der Heap Elemente...
+foldl(op, base, xs)
+  := if null(xs)
+        then base
+        else foldl(\x.\y.op(x)(y), op(head(xs))(base), tail(xs));
+
+foldr(op, base, xs)
+  := if null(xs)
+        then base
+        else op(head(xs), foldr(\x.\y.op(x,y)/*TODO:etareduce*/, base, tail(xs)));
+
+sum(xs) := foldl(\x.\y.x+y, 0, xs);
+
+/*
+http://projecteuler.net/problem=1: If we list all the natural numbers below 10
+that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples
+is 23.
+*/
+main() := sum(filter(\x. x%3=0 || x%5=0, iterateN(10, \x.x+1, 0)))

@@ -55,6 +55,8 @@ tests = [ testCase "rec/parsing1" parsing1
         , testCase "rec/lambda21" lambda21
         , testCase "rec/lambda22" lambda22
         , testCase "rec/lambda23" lambda23
+        , testCase "rec/lambda24" lambda24
+        , testCase "rec/lambda25" lambda25
         ]
 
 parsing1 = parse' p @?= e
@@ -80,9 +82,6 @@ parsing3 = parse' p @?= e
     [ ("main",   [],    Lam 1 "x" (Ap "+" [Var "x", Var "x"]))
     ]
 
-
--- Evaluation
--------------
 basic1 = run' p [] @?= 18
   where
   p = "main() := 18"
@@ -160,7 +159,6 @@ if10 = run' p [4] @?= 4
   where
   p = "main(a, b) := if b = 0 then a else 9"
 
-
 arith1 = run' p [5] @?= 120
   where
   p =  "main(n) := fac(n);"
@@ -229,8 +227,6 @@ lambda7 = run' p [] @?= 3
   p =  "main(a) := I(\\x. succ(x))(2);"
     ++ "I(x) := x;"
     ++ "succ(x) := x + 1"
-
--- Tests from "Implementing functional languages"
 
 lambda8 = run' (prelude0 ++ p) [] @?= 3
   where
@@ -325,4 +321,64 @@ lambda23 = run' p [] @?= 120
   where
   p =  "Y(f) := f(\\x. Y(f)(x));"
     ++ "main() := Y(\\f.\\n. if (n <= 1) then 1 else n*f(n-1))(5)"
+
+lambda24 = run' p [] @?= 23
+  where
+  p =  "void() := \\x. x;"
+    ++ "nil() := \\onEmpty.\\onPair. onEmpty(void());\n"
+    ++ "cons(hd) := \\tl.\\onEmpty.\\onPair.(onPair(hd))(tl);\n"
+    ++ "head(list) := (list(void()))(\\hd.\\tl.hd);\n"
+    ++ "tail(list) := (list(void()))(\\hd.\\tl.tl);\n"
+    ++ "null(list) := list(\\x.1)(\\x.\\y.0);\n"
+
+    ++ "filter(f, list)\n"
+    ++ "  := if null(list)\n"
+    ++ "        then nil()\n"
+    ++ "        else if f(head(list))\n"
+    ++ "                then cons(head(list))(filter(f, tail(list)))\n"
+    ++ "                else filter(f, tail(list));\n"
+
+    ++ "iterateN(n, f, x)\n"
+    ++ "  := if n = 0\n"
+    ++ "        then nil()\n"
+    ++ "        else cons(x)(iterateN(n-1, f, f(x)));\n"
+
+    ++ "foldl(op, base, xs)\n"
+    ++ "  := if null(xs)\n"
+    ++ "        then base\n"
+    ++ "        else foldl(\\x.\\y.op(x)(y), op(head(xs))(base), tail(xs));\n"
+
+    ++ "sum(xs) := foldl(\\x.\\y.x+y, 0, xs);\n"
+
+    ++ "main() := sum(filter(\\x. x%3=0 || x%5=0, iterateN(10, \\x.x+1, 0)))\n"
+
+lambda25 = run' p [] @?= 23
+  where
+  p =  "void() := \\x. x;"
+    ++ "nil() := \\onEmpty.\\onPair. onEmpty(void());\n"
+    ++ "cons(hd) := \\tl.\\onEmpty.\\onPair.(onPair(hd))(tl);\n"
+    ++ "head(list) := (list(void()))(\\hd.\\tl.hd);\n"
+    ++ "tail(list) := (list(void()))(\\hd.\\tl.tl);\n"
+    ++ "null(list) := list(\\x.1)(\\x.\\y.0);\n"
+
+    ++ "filter(f, list)\n"
+    ++ "  := if null(list)\n"
+    ++ "        then nil()\n"
+    ++ "        else if f(head(list))\n"
+    ++ "                then cons(head(list))(filter(f, tail(list)))\n"
+    ++ "                else filter(f, tail(list));\n"
+
+    ++ "iterateN(n, f, x)\n"
+    ++ "  := if n = 0\n"
+    ++ "        then nil()\n"
+    ++ "        else cons(x)(iterateN(n-1, f, f(x)));\n"
+
+    ++ "foldl(op, base, xs)\n"
+    ++ "  := if null(xs)\n"
+    ++ "        then base\n"
+    ++ "        else foldl(\\x.\\y.op(x)(y), op(base)(head(xs)), tail(xs));\n"
+
+    ++ "sum(xs) := foldl(\\x.\\y.x+y, 0, xs);\n"
+
+    ++ "main() := sum(filter(\\x. x%3=0 || x%5=0, iterateN(10, \\x.x+1, 0)))\n"
 \end{code}

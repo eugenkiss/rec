@@ -118,33 +118,43 @@ tests =
 
 -- Parsing/Lexing
 -----------------
+
 testComments1 = assertBool "" $ isRight $ runProgram [] $
     "// This is a comment\n" ++
     "x0 := x1 + 2"
+
 testComments2 = assertBool "" $ isRight $ runProgram [] $
     "x0 := x1 + 2; // This is a comment\n" ++
     "x0 := x1 + 2"
+
 testComments3 = assertBool "" $ isRight $ runProgram [] $
     "x0 := x1 + 2 /*" ++
     "This is a longer\n comment" ++
     "*/; x0 := x1 + 2"
+
 -- Duplicate labels
-testParsing1 = assertBool "" $ isLeft $ runProgram [] $ 
+testParsing1 = assertBool "" $ isLeft $ runProgram [] $
     "M1: x0 := 0; M1: x0 := 1; HALT"
+
 -- Illegal ;
 testParsing2 = assertBool "" $ isLeft $ runProgram [] $
     "x0 := x1 + 2;"
+
 -- No : in :=
 testParsing3 = assertBool "" $ isLeft $ runProgram [] $
     "x0 = x1 + 2"
+
 -- No ; to separate statements
 testParsing4 = assertBool "" $ isLeft $ runProgram [] $
     "x0 := x1 + 1\n" ++
     "x3 := x1 + 1"
+
 -- Everything ok
 testParsing5 = assertBool "" $ isRight $ runProgram [] "M1: HALT"
+
 -- Everything ok
 testParsing6 = assertBool "" $ isRight $ runProgram [] "M1: GOTO M1"
+
 -- A valid strict program should be a valid extended Program.
 -- The special case: IF .. THEN GOTO Mi;
 -- I.e. the If does not end with an END!
@@ -157,6 +167,7 @@ testParsing7 = assertBool "" $ isRight $ runProgram [] $
     "M6: x0 := x4 + 3;"           ++
     "M7: HALT"
 
+
 -- Strict transform tests
 -------------------------
 -- TODO: improve
@@ -164,15 +175,18 @@ testStrictRenaming1 = strictify (parse' e) @?= parse' s
   where
   e = "M1: x0 := x1 + 1"
   s = "M1: x0 := x1 + 1; M2: HALT"
+
 testStrictRenaming2 = strictify (parse' e) @?= parse' s
   where
   e = "M1: x0 := v + 1"
   s = "M1: x0 := x1 + 1; M2: HALT"
+
 -- GOTOs with an undefined label are simply transformed to M1.
 testStrictRenaming3 = strictify (parse' e) @?= parse' s
   where
   e = "M1: GOTO timbuktu"
   s = "M1: GOTO M1"
+
 testStrictRenaming4 = strictify (parse' e) @?= parse' s
   where
   e =  "quux := foo  + 1;"
@@ -189,6 +203,7 @@ testStrictRenaming4 = strictify (parse' e) @?= parse' s
     ++ "M5:   x6   := x4   + 0;"
     ++ "M6: GOTO M4;"
     ++ "M7: GOTO M1"
+
 -- This is a correct transformation of "x0 := x1 * x2". I encountered a
 -- logical error of mine for the label renaming and fixed the mistake. This is
 -- therefore a regression test.
@@ -218,13 +233,15 @@ testStrictRenaming5 = strictify (parse' e) @?= parse' s
 testStrictAssignment1 = strictify (parse' e) @?= parse' s
   where e = "x0 := x1"
         s = "M1: x0 := x1 + 0; M2: HALT"
+
 testStrictAssignment2 = strictify (parse' e) @?= parse' s
   where e = "x0 := 42"
         s = "M1: x0 := x1 + 42; M2: HALT" -- x1 is unused
 -- Using the label "M1" for e is important because I found a bug in my code
 -- this way. Therefore, this is a regression test.
+
 testStrictArithmetic1 = strictify (parse' e) @?= parse' s
-  where e = "M1: x0 := x1 + x2" 
+  where e = "M1: x0 := x1 + x2"
         s = "M1: x0 := x1 + 0;"           ++
             "M2: x3 := x2 + 0;"           ++ -- x3 is counter
             "M3: IF x3 = 0 THEN GOTO M7;" ++
@@ -238,13 +255,11 @@ testStrictArithmetic7 = strictify (parse' e1) @?= strictify (parse' e2)
         e2 = "x1 := 7;"      ++ -- x1 is unused
              "x0 := x1 + 42"
 
-testStrictArithmetic8 :: Assertion
 testStrictArithmetic8 = strictify (parse' e1) @?= strictify (parse' e2)
   where e1 = "x0 := (x1 + 3) - x2"
         e2 = "x3 := x1 + 3;" ++ -- x3 is unused
-             "x0 := x3 - x2" 
+             "x0 := x3 - x2"
 
-testStrictControl10 :: Assertion
 testStrictControl10 = strictify (parse' e1) @?= strictify (parse' e2)
   where e1 = "IF x0 > 5 && 5 < 6 THEN" ++
              "  x0 := x0 + 0"          ++
@@ -260,7 +275,7 @@ testStrictControl15 = strictify (parse' e1) @?= strictify (parse' e2)
              "  x0 := x0 + 0"    ++
              "END"
         e2 = "IF x0 != 5 THEN" ++
-             "  x0 := x0 + 0"  ++ 
+             "  x0 := x0 + 0"  ++
              "END"
 
 testStrictControl16 = strictify (parse' e1) @?= strictify (parse' e2)
@@ -278,13 +293,15 @@ testStrictControl17 = strictify (parse' e1) @?= strictify (parse' e2)
              "  x1 := x1 + 0"                              ++
              "END"
         e2 = "IF x0 != 5 || (x1 >= 6 && x0 <= 6) THEN" ++
-             "  x0 := x0 + 0"                          ++ 
+             "  x0 := x0 + 0"                          ++
              "ELSE"                                    ++
              "  x1 := x1 + 0"                          ++
              "END"
 
+
 -- Evaluation
 -------------
+
 testAssignment1
     = runProgram' [] "M1: x0 := x1 + 1; M2: HALT"
   @?= 1
@@ -314,7 +331,7 @@ testArithmetic2
     = runProgram' [] "M1: x0 := x1 + 10; M2: x0 := x1 - 100; M3: HALT"
   @?= 0
 testArithmetic3
-    = runProgram' [] "M1:x0:=x121+827;M2:x1:=x2+0;M3:HALT" 
+    = runProgram' [] "M1:x0:=x121+827;M2:x1:=x2+0;M3:HALT"
   @?= 827
 testArithmetic4
     = runProgram' [5, 6] "x0 := x1 + x2"
@@ -362,6 +379,7 @@ testLooping1 = runProgram' [10] p @?= 10
     ++ "M5: x1 := x2 + 1;"
     ++ "M6: GOTO M2;"
     ++ "M7: HALT"
+
 testLooping2 = runProgram' [8,7] p @?= 8 * 7
   where
   p =  "M1: IF x1 = 0 THEN GOTO M9;"
@@ -383,6 +401,7 @@ testControl1 = runProgram' [10, 1] p @?= 13
     ++ "x0 := x0 + 1;"
     ++ "IF c = 0 THEN HALT END;"
     ++ "GOTO M1"
+
 testControl2 = runProgram' [10, 1] p @?= 26
   where
   p =  "c0 := 16 / 2^2 + (x1 * (x2 % 2)) - 1;"
@@ -394,12 +413,15 @@ testControl2 = runProgram' [10, 1] p @?= 26
     ++ "      x0 := x0 + 1;"
     ++ "      IF c1 != 0 THEN GOTO M2 END;"
     ++ "    IF c0 != 0 THEN GOTO M1 END"
+
 testControl3 = runProgram' [] p @?= 1
   where
   p = "IF 2 = 2 THEN x0 := 1 END"
+
 testControl4 = runProgram' [] p @?= 1
   where
   p = "IF 2 >= 2 THEN x0 := 1 ELSE x0 := 2 END"
+
 testControl5 = runProgram' [10, 1] p @?= 42
   where
   p =  "IF !(16 / 2^2 + (x1 * (x2 % 2)) - 1 < 8 && x1 >= x2 || 2 = 2) THEN"
@@ -414,6 +436,10 @@ testControl5 = runProgram' [10, 1] p @?= 42
     ++ "    x0 := 42 "
     ++ "  END "
     ++ "END"
+
+
+-- Stack tests
+-------------------------
 
 testStack1 = runProgram' [] p @?= 10
   where
@@ -435,6 +461,9 @@ testStack2 = eval (strictify $ parse' p) [] @?= 3
     ++ "PUSH 3;"
     ++ "x0 := PEEK 3"
 
+
+-- Rec translation tests
+------------------------
 
 testGenRec1 = (genRec $ parse' p) @?= Rec.parse' e
   where
