@@ -44,5 +44,8 @@
       := a + b;
 
     func1(a,b) := b; func2(a) := a;
+
 - find explanation of encoding of lists like I use, so that I can explain it
   with my own words.
+
+- create documentation code.pdf and look that it is correctlu formatted

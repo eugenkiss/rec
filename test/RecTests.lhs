@@ -79,7 +79,7 @@ parsing3 = parse' p @?= e
   where
   p = "main() := \\x. x + x"
   e =
-    [ ("main",   [],    Lam 1 "x" (Ap "+" [Var "x", Var "x"]))
+    [ ("main",   [],    Lam 1 ["x"] (Ap "+" [Var "x", Var "x"]))
     ]
 
 basic1 = run' p [] @?= 18

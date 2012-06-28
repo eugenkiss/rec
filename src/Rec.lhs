@@ -154,7 +154,7 @@ data Exp
   | Var Name
   | Ap Name [Exp]
   | LAp Exp [Exp]
-  | Lam Int Name Exp
+  | Lam Int [Name] Exp
   | If Exp Exp Exp
   deriving (Eq, Show)
 \end{code}
@@ -290,8 +290,8 @@ pprExp (Ap f es)
   = f ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
 pprExp (LAp e es)
   = "(" ++ pprExp e ++ ")" ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
-pprExp (Lam _ x e)
-  = "\\" ++ x ++ ". " ++ pprExp e
+pprExp (Lam _ xs e)
+  = "\\" ++ intercalate " " xs ++ ". " ++ pprExp e
 pprExp (If e1 e2 e3)
   = "if " ++ pprExp e1
           ++ " then " ++ pprExp e2
@@ -461,12 +461,12 @@ Hier nun noch die restlichen Parser:
 \begin{code}
 pLam = do
   i <- getState
-  updateState succ
   _ <- symbol "\\"
   x <- identifier
   _ <- symbol "."
+  updateState succ
   e <- pExp
-  return $ Lam i x e
+  return $ Lam i [x] e
 \end{code}
 
 TODO: Kommaseparierte Elemente
@@ -555,8 +555,8 @@ getNames (Num _:rest) = getNames rest
 getNames (Var v:rest) = v : getNames rest
 getNames (Ap fn args:rest)
   = fn : getNames args ++ getNames rest
-getNames (Lam _ x e:rest)
-  = x : getNames [e] ++ getNames rest
+getNames (Lam _ xs e:rest)
+  = xs ++ getNames [e] ++ getNames rest
 getNames (LAp e args:rest)
   = getNames [e] ++ getNames args ++ getNames rest
 getNames (If e1 e2 e3:rest)
@@ -759,7 +759,7 @@ genCallSequence fnNames paramMap freeMap (Ap fn args : rest)
 \end{code}
 
 \begin{code}
-genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
+genCallSequence fnNames paramMap freeMap (Lam i xs e : rest)
   =  G.Closurize i
        (map (G.Var . (\x -> case M.lookup x freeMap of
                               Just v  -> v
@@ -768,8 +768,8 @@ genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
        )
   <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength (free1++free2))))
   <> genCallSequence fnNames paramMap freeMap rest
-  where free1 = (((M.keys paramMap) \\ [x]) `intersect` (getNames [e])) \\ free2
-        free2 = ((M.keys freeMap) \\ [x]) `intersect` (getNames [e])
+  where free1 = (((M.keys paramMap) \\ xs) `intersect` (getNames [e])) \\ free2
+        free2 = ((M.keys freeMap) \\ xs) `intersect` (getNames [e])
 \end{code}
 
 \begin{code}
@@ -1065,18 +1065,18 @@ genLamSection fnNames ((_, topargs, LAp e args) : rest)
         t2 = genLamSection fnNames $ map (\x->("dontcare", topargs, x)) args
         t3 = genLamSection fnNames rest
     in  t1 <> t2 <> t3
-genLamSection fnNames ((_, topargs, Lam i args e) : rest)
+genLamSection fnNames ((_, topargs, Lam i xs e) : rest)
   = let t1 = G.Label ("lambda" ++ show i)
              $  mempty
              <> (if (length free) /= 0
                    then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
                    else mempty)
              <> genHArgSequence (length free)
-             <> genArgSequence (length [args])
-             <> genCallSequence fnNames (mkParamMap [args]) (mkFreeMap free) [e]
+             <> genArgSequence (length xs)
+             <> genCallSequence fnNames (mkParamMap xs) (mkFreeMap free) [e]
              <> G.Return
-        free = getFreeVars topargs [args] e
-        t2 = genLamSection fnNames [("dontcare", topargs ++ [args], e)]
+        free = getFreeVars topargs xs e
+        t2 = genLamSection fnNames [("dontcare", topargs ++ xs, e)]
         t3 = genLamSection fnNames rest
     in     mempty
         <> t1
