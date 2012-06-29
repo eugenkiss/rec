@@ -45,6 +45,7 @@ Da im Quellcode teilweise auf Bibliotheken und Hilfsfunktionen des Haskell
 \begin{code}
 import Control.Monad
 import Data.Monoid
+import Data.Functor
 import Data.List ((\\), intersect, intercalate, nub, genericLength, sort)
 import Data.Maybe (fromJust)
 import qualified Data.Map as M
@@ -370,8 +371,11 @@ whiteSpace = Token.whiteSpace lexer
 symbol     = Token.symbol lexer
 \end{code}
 
+% TODO: Int erklären (lambda) und [(Name, Int)] erklären (für entmehrdeutigalisieriung
+% und syntaktischen zucker entfernung)
+
 \begin{code}
-type Parser a = GenParser Char Int a
+type Parser a = GenParser Char (M.Map Name Int, Int) a
 \end{code}
 
 Kommen wir nun zum eigentlichen Parsen. Die Funktion |parse| erhält als Eingabe
@@ -385,9 +389,23 @@ Eingabe.
 
 \begin{code}
 parse :: String -> Either String Program
-parse = mkStdParser pProgram 1 whiteSpace
+parse source = mkStdParser pProgram (parseDefs source, 1) whiteSpace source
+
 parse' :: String -> Program
-parse' = mkStdParser' pProgram 1 whiteSpace
+parse' source = mkStdParser' pProgram (parseDefs source, 1) whiteSpace source
+
+-- TODO: explain why needed
+parseDefs :: String -> M.Map Name Int
+parseDefs source = case mkStdParser (semiSep1 p) (M.empty, 0) whiteSpace source of
+                     Right r -> M.fromList r
+                     Left  _ -> M.empty -- errors are found in 2. pass anyway
+  where
+  p = do
+    n <- identifier
+    l <- length <$> (parens $ commaSep identifier)
+    reservedOp ":="
+    _ <- pExp
+    return (n, l)
 \end{code}
 
 Rufen wir uns noch einmal die Syntaxdefinition von \Rec ins Gedächtnis. Diese
@@ -406,6 +424,7 @@ Diese werden folgendermaßen übersetzt:
 \begin{code}
 pProgram :: Parser Program
 pProgram = semiSep1 pFn
+
 pFn :: Parser Def
 pFn = do
   name <- identifier
@@ -459,18 +478,18 @@ pExp = buildExpressionParser opTable pTerm
     , [ op "||" AssocRight ]
     ]
   op name = Infix (reservedOp name >> return (\x y -> Ap name [x, y]))
-pTerm = pLam <|> try pLAp <|> try pAp <|> try pIf <|> pVar <|> pNum <|> parens pExp <?> "term"
+pTerm = try pLAp <|> try pLam <|> try pAp <|> try pIf <|> pVar <|> pNum <|> parens pExp <?> "term"
 \end{code}
 
 Hier nun noch die restlichen Parser:
 
 \begin{code}
 pLam = do
-  i <- getState
+  (_,i) <- getState
   _ <- symbol "\\"
   xs <- sepBy1 identifier whiteSpace
   _ <- symbol "."
-  updateState (\i -> i + length xs)
+  updateState (\(m, i) -> (m, i + length xs))
   e <- pExp
   return $ mkLamChain i xs e
   where
@@ -484,15 +503,15 @@ TODO: Kommaseparierte Elemente
 \begin{code}
 pLAp =
     try (do {l <- try pAp <|> try (parens $ pLam) <|> try pVar
-       ;pars <- many1 $ (parens pExp)
+       ;pars <- concat <$> (many1 $ (parens $ commaSep pExp))
        ;return $ mkLApChain (reverse (l:pars))
        })
     <|>
-    do {l <- try pAp <|> try (parens $ pLam) <|> try pVar
-       ;args <- parens $ commaSep pExp
-       ;return $ mkLApChain (reverse (l:args))
-       }
-    <|>
+    --try (do {l <- try pAp <|> try (parens $ pLam) <|> try pVar
+    --   ;args <- parens $ commaSep pExp
+    --   ;return $ mkLApChain (reverse (l:args))
+    --   })
+    -- <|>
     do {l <- parens pExp
        ;e <- parens pExp
        ;return $ LAp l e
@@ -502,9 +521,23 @@ pLAp =
          mkLApChain [] = error "Impossible due to parsing!"
 
 pAp = do
+  {--
   fn <- identifier
   args <- parens $ commaSep pExp
   return $ Ap fn args
+  --}
+  fn <- identifier
+  t <- M.lookup fn . fst <$> getState
+  case t of
+    Nothing -> fail "definition for application not found"
+               --do args <- parens $ commaSep pExp
+               --   return $ Ap fn args
+    Just n -> do
+      args <- parens $ commaSep pExp
+      if length args == n
+         then return $ Ap fn args
+         else fail "incorrect amount of arguments"
+
 pIf = do
   reserved "if"
   e1 <- pExp
@@ -829,15 +862,17 @@ genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
 \end{code}
 
 \begin{code}
-{--genCallSequence fnNames paramMap freeMap (LAp l@(Ap _ _) args : rest)
+{--
+genCallSequence fnNames paramMap freeMap (LAp l@(Ap _ _) e : rest)
   =  mempty
-  <> genCallSequence fnNames paramMap freeMap args
+  <> genCallSequence fnNames paramMap freeMap [e]
   <> genCallSequence fnNames paramMap freeMap [l]
   <> G.Pop "t" -- return value, i.e. heap adress of closure
-  <> G.CallClosure (G.Var "t") (length args)
+  <> G.CallClosure (G.Var "t") 1 -- TODO: (length args)
   <> genArgSequence (M.size paramMap) -- reset args
   <> genCallSequence fnNames paramMap freeMap rest
-  --}
+
+
 genCallSequence fnNames paramMap freeMap (LAp e1@(Ap _ [(Lam _ _ _)]) e2@(Ap _ _) : rest)
   =  mempty
   <> genCallSequence fnNames paramMap freeMap [e2]
@@ -850,10 +885,9 @@ genCallSequence fnNames paramMap freeMap (LAp e1@(Ap _ [(Lam _ _ _)]) e2@(Ap _ _
   <> genHArgSequence (M.size freeMap) -- reset free vars
   <> genArgSequence (M.size paramMap) -- reset args
   <> genCallSequence fnNames paramMap freeMap rest
-\end{code}
+--}
 
-\begin{code}
-genCallSequence fnNames paramMap freeMap (LAp e1@(Ap _ [_]) e2@(Ap _ [_]): rest)
+genCallSequence fnNames paramMap freeMap (LAp e1@(LAp _ _) e2@(LAp _ _) : rest)
   =  mempty
   <> genCallSequence fnNames paramMap freeMap [e1]
   <> genCallSequence fnNames paramMap freeMap [e2]

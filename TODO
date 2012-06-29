@@ -1,3 +1,4 @@
+- gengoto fixen, leeres lamret wird erzeugt!
 - Direktes zuweisen von top-level funktionen als parameter ermöglichen, sodass
   nicht immer in einen lambda-ausdruck gewrappt werden muss
   succ ist also syntaktischer zucker für \x1.\x2. ... \xn. succ(x1,x2,...,xn)
