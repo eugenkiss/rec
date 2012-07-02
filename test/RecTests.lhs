@@ -14,8 +14,6 @@ tests = [ testCase "rec/parsing1" parsing1
         , testCase "rec/desugar2" desugar2
         , testCase "rec/desugar3" desugar3
         , testCase "rec/desugar4" desugar4
-        , testCase "rec/desugar5" desugar5
-        , testCase "rec/desugar6" desugar6
         , testCase "rec/basic1" basic1
         , testCase "rec/basic2" basic2
         , testCase "rec/basic3" basic3
@@ -113,24 +111,10 @@ desugar3 = parse' p @?= parse' e
 
 desugar4 = parse' p @?= parse' e
   where
-  p =  "succ(n, f, z) := f(n(f)(z));"
+  p =  "succ := 5;"
     ++ "main := succ"
-  e =  "succ(n, f, z) := f(n(f)(z));"
-    ++ "main := \\x1.\\x2.\\x3. succ(x1, x2, x3)"
-
-desugar5 = parse' p @?= parse' e
-  where
-  p =  "succ(n, f, z) := f(n(f)(z));"
+  e =  "succ := 5;"
     ++ "main := succ()"
-  e =  "succ(n, f, z) := f(n(f)(z));"
-    ++ "main := \\x1.\\x2.\\x3. succ(x1, x2, x3)"
-
-desugar6 = parse' p @?= parse' e
-  where
-  p =  "succ(n, f, z) := f(n(f)(z));"
-    ++ "main(a) := succ(a)"
-  e =  "succ(n, f, z) := f(n(f)(z));"
-    ++ "main(a) := \\x1.\\x2. succ(a, x1, x2)"
 
 basic1 = run' p [] @?= 18
   where

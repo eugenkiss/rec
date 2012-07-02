@@ -1,6 +1,30 @@
-- Beispiele und Tests (tests nur teilweise) mit neuem syntaktischen zucker
-  verbessern
+- buggy churchlists.rec in tests übernehmen
+- Test Push_Heap (auch in striktem Modus)
+- primitive Übersetzung nach GOTO strikt impelementieren
+- Allow LOOP and WHILE Schleifen in GOTO!
+- CLOSURIZE zu MAKE_CLOSURE!
 - Code aufräumen!
+- Mit Grep nach TODO's suchen!
+- Lint drüber laufen lassen
+
+- use landin paper
+- find explanation of encoding of lists like I use, so that I can explain it
+  with my own words.
+
+- create documentation code.pdf and look that it is correctlu formatted
+
+- Dokumentieren:
+  - \f g y. ist syntaktischer zuker für \f.\g.\y.
+  - succ()(a, b, c) ist syntaktischer zucker für succ()(a)(b)(c)
+  - succ := bla ist syntaktischer Zucker für succ() := bla
+  - succ ist syntaktischer Zucker für succ(), falls succ toplevel fkt.
+    Das gilt insbesondere für eine Applikation succ(a,b), die wie folgt zu
+    interpretieren ist: succ()(a,b)
+
+
+FUTURE
+======
+
 - Prelude! (map, cons etc.) Falls aber eine Funktion mit demselben Namen schon
   existert, dann prelude definition *nicht* verwenden. Und prelude definitionen
   nur einfügen, wenn sie auch benutzt werden!
@@ -9,25 +33,7 @@
     http://hackage.haskell.org/packages/archive/base/latest/doc/html/Prelude.html
   Benutze Template Haskell um stdlib zur compilierzeit in die korrekte Stelle
   einzufügen.
-
-- Test Push_Heap (auch in striktem Modus)
-- primitive Übersetzung nach GOTO strikt impelementieren
-- use landin paper
-- Allow LOOP and WHILE Schleifen in GOTO!
-- Mit Grep nach TODO's suchen!
-- Lint drüber laufen lassen
-- json-tmlanguage fur rec verbessern. pathologische Fälle:
-
-    func(a, b)
-      := a + b;
-
-    func1(a,b) := b; func2(a) := a;
-
-- find explanation of encoding of lists like I use, so that I can explain it
-  with my own words.
-
-- create documentation code.pdf and look that it is correctlu formatted
-
+- Template Haskell auch für Testfälle nutzen
 - Syntaktischer Zucker für Listen? 
     [1,2,3] => cons, 2 : [3,4] => cons(2,[3,4])
     [1] ++ [2] => append([1],[2])
@@ -35,26 +41,4 @@
 - alpha reduction: wenn eine Funktion lamret,IF,GOTO etc. heißt, dann ihr einen
   neuen Namen geben, damit sie nicht mit der lamret section kollidiert (1st
   pass)
-
-- Dokumentieren:
-
-  - \f g y. ist syntaktischer zuker für \f.\g.\y.
-  - succ()(a, b, c) ist syntaktischer zucker für succ()(a)(b)(c)
-  - succ := bla ist syntaktischer Zucker für succ() := bla
-  - Direktes zuweisen von top-level funktionen als parameter ermöglichen, sodass
-    nicht immer in einen lambda-ausdruck gewrappt werden muss
-    succ ist also syntaktischer zucker für \x1.\x2. ... \xn. succ(x1,x2,...,xn)
-    falls succ n parameter erhält
-    Falls n=0, dann steht succ für succ()
-    D.h., wenn man Programme in dem Stil schreibt:
-      succ() := \a b c. bla
-    Dann kann man im curried stil programmieren:
-      succ(a, b) == succ()(a)(b)
-
-    Falls aber
-      succ(a,b,c) := bla
-    Dann geht das nicht
-      succ == \a b c. succ(a,b,c)
-      succ() == ?
-      succ(a) == \b c. succ(a,b,c)
 

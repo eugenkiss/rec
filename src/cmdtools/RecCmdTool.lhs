@@ -71,7 +71,7 @@ main = do
                 "" -> getContents
                 _  -> readFile f
       case parse code of
-        Right p -> putStrLn $ show p
+        Right p -> putStrLn $ pprint p
         Left  e -> putStrLn e
   where
   parseArgList input = Parsec.parse argList "(unknown)" input

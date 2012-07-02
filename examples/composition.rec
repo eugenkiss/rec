@@ -1,4 +1,4 @@
-compose(f) := \g. \x. f(g(x));
-twice(f)   := \x. compose(f)(f)(x);
+compose := \f g x. f(g(x));
+twice := \f x. compose(f, f)(x);
 
-main()     := twice(\x.x*2)(10) // = 40
+main := twice(\x. x * 2)(10) // = 40

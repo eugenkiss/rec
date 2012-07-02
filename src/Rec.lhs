@@ -537,33 +537,22 @@ pAp = do
   t <- M.lookup fn . fst <$> getState
   case t of
     Nothing -> fail "definition for application not found!"
-    Just n  -> do
+    Just 0  -> do
       t <- option Nothing $ Just <$> (symbol "(")
-      args <-
-        case t of
-          Nothing -> return []
-          Just _  -> do
-            xs <- commaSep pExp
-            _ <- symbol ")"
-            return xs
-      let n0 = length args
-      case () of
-        _ | n0 >  n   -> fail "too many arguments for application!"
-          | n0 == n   -> return $ Ap fn args
-          | otherwise -> do -- n0 < n, i.e. syntactic sugar
-              let d = n - n0
-              (is, rest) <- (splitAt d . snd) <$> getState
-              updateState (\(m, _) -> (m, rest))
-              let as  = map ('x' :) (map show [1..])
-                  ls  = take d (as \\ (getNames args))
-                  ls' = map Var ls
-              return $ mkLamChain fn (args ++ ls') ls is
-  where
-  mkLamChain fn as [] []
-    = Ap fn as
-  mkLamChain fn as (l:ls) (i:is)
-    = Lam i l $ mkLamChain fn as ls is
-  mkLamChain _ _ _ _ = error "Impossible!"
+      case t of
+        Nothing -> return $ Ap fn []
+        Just _  -> do
+          args <- commaSep pExp
+          _ <- symbol ")"
+          return $ mkLApChain (reverse $ (Ap fn []) : args)
+    Just n  -> do
+      args <- parens $ commaSep pExp
+      if (length args) /= n
+         then fail "incorrect number of arguments!"
+         else return $ Ap fn args
+   where mkLApChain [e]    = e
+         mkLApChain (e:es) = LAp (mkLApChain es) e
+         mkLApChain [] = error "Impossible due to parsing!"
 
 
 pIf = do
