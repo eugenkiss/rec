@@ -1117,7 +1117,10 @@ genGoto defs = mempty
   <> G.Seq (map (genDefSection defNames) defs)
   <> genOpSection defNames defRhss
   <> genLamSection defNames defs
-  <> (G.Label "lamret" $ genLamRetSection defRhss)
+  <> let lamRetSec = genLamRetSection defRhss
+     in  if lamRetSec == mempty
+            then mempty
+            else G.Label "lamret" lamRetSec
   where
   defNames = getDefNames defs
   defRhss  = getDefRhss  defs

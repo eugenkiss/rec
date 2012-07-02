@@ -1,4 +1,4 @@
-- gengoto fixen, leeres lamret wird erzeugt!
+- Überlege ob succ() := bla auch als succ := bla definiert werden kann.
 - Direktes zuweisen von top-level funktionen als parameter ermöglichen, sodass
   nicht immer in einen lambda-ausdruck gewrappt werden muss
   succ ist also syntaktischer zucker für \x1.\x2. ... \xn. succ(x1,x2,...,xn)
@@ -16,21 +16,17 @@
     succ() == ?
     succ(a) == \b c. succ(a,b,c)
 
-  Überlege ob succ() := bla auch als succ := bla definiert werden kann.
-  Implement desugar subcommand that desugars rec program (only first pass is
-  done)
-  Vorher aber sugar tests schreiben!
-  Prelude! (map, cons etc.) Falls aber eine Funktion mit demselben Namen schon
+- Beispiele und Tests (tests nur teilweise) mit neuem syntaktischen zucker
+  verbessern
+- Code aufräumen!
+- Prelude! (map, cons etc.) Falls aber eine Funktion mit demselben Namen schon
   existert, dann prelude definition *nicht* verwenden. Und prelude definitionen
   nur einfügen, wenn sie auch benutzt werden!
     http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.3.2
     http://programmingpraxis.com/contents/standard-prelude/
     http://hackage.haskell.org/packages/archive/base/latest/doc/html/Prelude.html
-  Syntaktischer Zucker für Listen [1,2,3] => cons, 2 : [3,4] => cons(2,[3,4])
-                                  [1] ++ [2] => append([1],[2])
-  Let?
-- Beispiele und Tests (tests nur teilweise) mit neuem syntaktischen zucker
-  verbessern
+  Benutze Template Haskell um stdlib zur compilierzeit in die korrekte Stelle
+  einzufügen.
 
 - Test Push_Heap (auch in striktem Modus)
 - primitive Übersetzung nach GOTO strikt impelementieren
@@ -48,8 +44,13 @@
   with my own words.
 
 - create documentation code.pdf and look that it is correctlu formatted
-- parsen von Ap und LAp kann subtile Mehrdeutigkeiten enthalten
 
+- Syntaktischer Zucker für Listen? 
+    [1,2,3] => cons, 2 : [3,4] => cons(2,[3,4])
+    [1] ++ [2] => append([1],[2])
+- Let bindings? (Let mittels Church encoding?)
+- alpha reduction: wenn eine Funktion lamret heißt, dann ihr einen neuen Namen
+  geben, damit sie nicht mit der lamret section kollidiert (1st pass)
 
 - Dokumentieren:
 
