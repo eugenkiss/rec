@@ -1,4 +1,3 @@
-- Überlege ob succ() := bla auch als succ := bla definiert werden kann.
 - Direktes zuweisen von top-level funktionen als parameter ermöglichen, sodass
   nicht immer in einen lambda-ausdruck gewrappt werden muss
   succ ist also syntaktischer zucker für \x1.\x2. ... \xn. succ(x1,x2,...,xn)
@@ -33,6 +32,7 @@
 - use landin paper
 - Allow LOOP and WHILE Schleifen in GOTO!
 - Mit Grep nach TODO's suchen!
+- Lint drüber laufen lassen
 - json-tmlanguage fur rec verbessern. pathologische Fälle:
 
     func(a, b)
@@ -56,3 +56,4 @@
 
   - \f g y. ist syntaktischer zuker für \f.\g.\y.
   - succ()(a, b, c) ist syntaktischer zucker für succ()(a)(b)(c)
+  - succ := bla ist syntaktischer Zucker für succ() := bla

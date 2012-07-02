@@ -9,6 +9,7 @@ import Rec
 tests = [ testCase "rec/parsing1" parsing1
         , testCase "rec/parsing2" parsing2
         , testCase "rec/parsing3" parsing3
+        , testCase "rec/parsing4" parsing4
         , testCase "rec/desugar1" desugar1
         , testCase "rec/desugar2" desugar2
         , testCase "rec/basic1" basic1
@@ -84,6 +85,13 @@ parsing3 = parse' p @?= e
     [ ("main",   [],    Lam 1 "x" (Ap "+" [Var "x", Var "x"]))
     ]
 
+parsing4 = parse' p @?= e
+  where
+  p = "main := \\x. x + x"
+  e =
+    [ ("main",   [],    Lam 1 "x" (Ap "+" [Var "x", Var "x"]))
+    ]
+
 desugar1 = parse' p @?= parse' e
   where
   p = "main() := \\a b c. a + b + c"
@@ -109,12 +117,12 @@ basic3 = run' p [21] @?= 42
 -- regression
 basic4 = run' p [] @?= 2
   where
-  p = "main() := f(1); f(a) := a * 2"
+  p = "main := f(1); f(a) := a * 2"
 
 -- regression
 basic5 = run' p [] @?= 2
   where
-  p = "main() := f(1); f(a) := a + a"
+  p = "main := f(1); f(a) := a + a"
 
 -- regression
 basic6 = run' p [7] @?= 8
@@ -127,15 +135,15 @@ basic7 = run' p [2, 2] @?= 1
 
 basic8 = run' p [] @?= 4
   where
-  p = "main() := f(((2^2 + 2^2 - 5) * 30) / 10 % 8); f(a) := a + 3"
+  p = "main := f(((2^2 + 2^2 - 5) * 30) / 10 % 8); f(a) := a + 3"
 
 if1 = run' p [] @?= 2
   where
-  p = "main() := if 0 then 1 else 2"
+  p = "main := if 0 then 1 else 2"
 
 if2 = run' p [] @?= 1
   where
-  p = "main() := if 1 then 1 else 2"
+  p = "main := if 1 then 1 else 2"
 
 if3 = run' p [50] @?= 1
   where
@@ -143,15 +151,15 @@ if3 = run' p [50] @?= 1
 
 if4 = run' p [] @?= 1
   where
-  p = "main() := if 5 = 5 then 1 else 2"
+  p = "main := if 5 = 5 then 1 else 2"
 
 if5 = run' p [] @?= 2
   where
-  p = "main() := if 5 > 6 then 1 else 2"
+  p = "main := if 5 > 6 then 1 else 2"
 
 if6 = run' p [] @?= 1
   where
-  p = "main() := if 5 > 6 || 100 > 0  then 1 else 2"
+  p = "main := if 5 > 6 || 100 > 0  then 1 else 2"
 
 if7 = run' p [6] @?= 1
   where
@@ -207,7 +215,7 @@ prelude0
 lambda1 = run' p [] @?= 30
   where
   p =  "compose(f, g, x) := f(g(x));"
-    ++ "main() := compose(\\x. x + 10, \\x. x * 10, 2)"
+    ++ "main := compose(\\x. x + 10, \\x. x * 10, 2)"
 
 lambda2 = run' p [] @?= 3
   where
@@ -217,11 +225,11 @@ lambda2 = run' p [] @?= 3
 
 lambda3 = run' p [] @?= 3
   where
-  p =  "main() := (\\x. x + 1)(2)"
+  p =  "main := (\\x. x + 1)(2)"
 
 lambda4 = run' p [] @?= 7
   where
-  p =  "main() := ((\\x.\\y. x + y)(2))(5)"
+  p =  "main := ((\\x.\\y. x + y)(2))(5)"
 
 lambda5 = run' p [] @?= 3
   where
@@ -242,102 +250,102 @@ lambda7 = run' p [] @?= 3
 
 lambda8 = run' (prelude0 ++ p) [] @?= 3
   where
-  p =  "main() := I(3)"
+  p =  "main := I(3)"
 
 lambda9 = run' (prelude0 ++ p) [] @?= 9
   where
-  p =  "main() := ((S(\\x.\\y. (K(x))(y)))(\\x. K(x)))(9)"
+  p =  "main := ((S(\\x.\\y. (K(x))(y)))(\\x. K(x)))(9)"
 
 lambda10 = run' (prelude0 ++ p) [] @?= 9
   where
   p =  "id(x) := ((S(\\x.\\y. (K(x))(y)))(\\x. K(x)))(x);"
-    ++ "main() := id(9)"
+    ++ "main := id(9)"
 
 lambda11 = run' (prelude0 ++ p) [] @?= 88
   where
   p =  "id(x) := ((S(\\x.\\y. (K(x))(y)))(\\x. K(x)))(x);"
-    ++ "main() := (twice(\\x.x*2))(id(22))"
+    ++ "main := (twice(\\x.x*2))(id(22))"
 
 lambda12 = run' (prelude0 ++ p) [] @?= 9
   where
   p =  "id(x) := ((S(\\x.\\y. (K(x))(y)))(\\x. K(x)))(x);"
-    ++ "main() := (twice(twice(twice(\\x.id(x)))))(9)"
+    ++ "main := (twice(twice(twice(\\x.id(x)))))(9)"
 
 lambda13 = run' (prelude0 ++ p) [] @?= 160
   where
-  p =  "main() := twice(twice(\\x.x*2))(10)"
+  p =  "main := twice(twice(\\x.x*2))(10)"
 
 lambda14 = run' (prelude0 ++ p) [] @?= 100
   where
-  p =  "main() := I(\\x.x*10)(10)"
+  p =  "main := I(\\x.x*10)(10)"
 
 lambda15 = run' (prelude0 ++ p) [] @?= 40
   where
-  p =  "main() := I(\\x.twice(x))(\\x.x*2)(10)"
+  p =  "main := I(\\x.twice(x))(\\x.x*2)(10)"
 
 lambda16 = run' (prelude0 ++ p) [] @?= 2
   where
-  p =  "main() := numerify(TWO());"
-    ++ "TWO() := \\f.\\x.f(f(x));"
+  p =  "main := numerify(TWO());"
+    ++ "TWO := \\f.\\x.f(f(x));"
     ++ "numerify(n) := n(\\x.x+1)(0)"
 
 lambda17 = run' (prelude0 ++ p) [] @?= 99
   where
-  p =  "test() := \\n.\\z. (n(\\x.n(x)))(z);"
-    ++ "main() := test()(\\x.x)(99)"
+  p =  "test := \\n.\\z. (n(\\x.n(x)))(z);"
+    ++ "main := test()(\\x.x)(99)"
 
 lambda18 = run' (prelude0 ++ p) [] @?= 99
   where
-  p =  "test() := \\n.\\f.\\z. f((n(\\x.f(x)))(z));"
-    ++ "main() := (((test())(\\x.x))(\\x.x))(99)"
+  p =  "test := \\n.\\f.\\z. f((n(\\x.f(x)))(z));"
+    ++ "main := (((test())(\\x.x))(\\x.x))(99)"
 
 lambda19 = run' (prelude0 ++ p) [] @?= 3
   where
   p =  "numerify(n) := n(\\x.x+1)(0);"
-    ++ "zero() := \\f.\\x.x;"
-    ++ "succ() := \\n.\\f.\\z. f(n(f)(z));"
-    ++ "one()  := succ()(zero());"
-    ++ "two()  := succ()(one());"
-    ++ "main() := numerify(succ()(two()))"
+    ++ "zero := \\f.\\x.x;"
+    ++ "succ := \\n.\\f.\\z. f(n(f)(z));"
+    ++ "one  := succ()(zero());"
+    ++ "two  := succ()(one());"
+    ++ "main := numerify(succ()(two()))"
 
 lambda20 = run' (prelude0 ++ p) [] @?= 100
   where
-  p =  "TRUE() := \\onTrue.\\onFalse.onTrue(\\x. x);"
-    ++ "FALSE() := \\onTrue.\\onFalse.onFalse(\\x. x);"
+  p =  "TRUE := \\onTrue.\\onFalse.onTrue(\\x. x);"
+    ++ "FALSE := \\onTrue.\\onFalse.onFalse(\\x. x);"
     ++ "IF0(test) := \\onTrue.\\onFalse.test(onTrue)(onFalse);"
-    ++ "main() := IF0(TRUE())(\\x.100)(\\y.200)"
+    ++ "main := IF0(TRUE())(\\x.100)(\\y.200)"
 
 lambda21 = run' p [] @?= 2
   where
   p =  "numerify(n) := n(\\x.x+1)(0);"
-    ++ "ZERO() := \\f.\\x.x;"
-    ++ "SUCC() := \\n.\\f.\\z. f(n(f)(z));"
-    ++ "ONE()  := SUCC()(ZERO());"
-    ++ "TWO()  := SUCC()(ONE());"
+    ++ "ZERO := \\f.\\x.x;"
+    ++ "SUCC := \\n.\\f.\\z. f(n(f)(z));"
+    ++ "ONE  := SUCC()(ZERO());"
+    ++ "TWO  := SUCC()(ONE());"
     ++ ""
-    ++ "VOID() := \\x. x;"
-    ++ "NIL() := \\onEmpty.\\onPair. onEmpty(VOID());"
+    ++ "VOID := \\x. x;"
+    ++ "NIL := \\onEmpty.\\onPair. onEmpty(VOID());"
     ++ "CONS(hd) := \\tl.\\onEmpty.\\onPair.onPair(hd)(tl);"
     ++ "HEAD(list) := list(VOID())(\\hd.\\tl.hd);"
     ++ "TAIL(list) := list(VOID())(\\hd.\\tl.tl);"
-    ++ "l() := CONS(ZERO()) (CONS(TWO())(NIL()));"
+    ++ "l := CONS(ZERO()) (CONS(TWO())(NIL()));"
     ++ ""
-    ++ "main() := numerify(HEAD(TAIL(l()))) // == 2"
+    ++ "main := numerify(HEAD(TAIL(l()))) // == 2"
 
 lambda22 = run' p [] @?= 120
   where
   p =  "U(f) := f(f);"
-    ++ "main() := U(\\h.\\n.if (n <= 1) then 1 else n*(h(h))(n-1))(5)"
+    ++ "main := U(\\h.\\n.if (n <= 1) then 1 else n*(h(h))(n-1))(5)"
 
 lambda23 = run' p [] @?= 120
   where
   p =  "Y(f) := f(\\x. Y(f)(x));"
-    ++ "main() := Y(\\f.\\n. if (n <= 1) then 1 else n*f(n-1))(5)"
+    ++ "main := Y(\\f.\\n. if (n <= 1) then 1 else n*f(n-1))(5)"
 
 lambda24 = run' p [] @?= 23
   where
-  p =  "void() := \\x. x;"
-    ++ "nil() := \\onEmpty.\\onPair. onEmpty(void());\n"
+  p =  "void := \\x. x;"
+    ++ "nil := \\onEmpty.\\onPair. onEmpty(void());\n"
     ++ "cons(hd) := \\tl.\\onEmpty.\\onPair.(onPair(hd))(tl);\n"
     ++ "head(list) := (list(void()))(\\hd.\\tl.hd);\n"
     ++ "tail(list) := (list(void()))(\\hd.\\tl.tl);\n"
@@ -362,12 +370,12 @@ lambda24 = run' p [] @?= 23
 
     ++ "sum(xs) := foldl(\\x.\\y.x+y, 0, xs);\n"
 
-    ++ "main() := sum(filter(\\x. x%3=0 || x%5=0, iterateN(10, \\x.x+1, 0)))\n"
+    ++ "main := sum(filter(\\x. x%3=0 || x%5=0, iterateN(10, \\x.x+1, 0)))\n"
 
 lambda25 = run' p [] @?= 23
   where
-  p =  "void() := \\x. x;"
-    ++ "nil() := \\onEmpty.\\onPair. onEmpty(void());\n"
+  p =  "void := \\x. x;"
+    ++ "nil := \\onEmpty.\\onPair. onEmpty(void());\n"
     ++ "cons(hd) := \\tl.\\onEmpty.\\onPair.(onPair(hd))(tl);\n"
     ++ "head(list) := (list(void()))(\\hd.\\tl.hd);\n"
     ++ "tail(list) := (list(void()))(\\hd.\\tl.tl);\n"
@@ -392,5 +400,5 @@ lambda25 = run' p [] @?= 23
 
     ++ "sum(xs) := foldl(\\x.\\y.x+y, 0, xs);\n"
 
-    ++ "main() := sum(filter(\\x. x%3=0 || x%5=0, iterateN(10, \\x.x+1, 0)))\n"
+    ++ "main := sum(filter(\\x. x%3=0 || x%5=0, iterateN(10, \\x.x+1, 0)))\n"
 \end{code}

@@ -395,6 +395,7 @@ parse' :: String -> Program
 parse' source = mkStdParser' pProgram (parseDefs source, 1) whiteSpace source
 
 -- TODO: explain why needed
+-- TODO: replace with regular exp
 parseDefs :: String -> M.Map Name Int
 parseDefs source = case mkStdParser (semiSep1 p) (M.empty, 0) whiteSpace source of
                      Right r -> M.fromList r
@@ -402,10 +403,18 @@ parseDefs source = case mkStdParser (semiSep1 p) (M.empty, 0) whiteSpace source 
   where
   p = do
     n <- identifier
-    l <- length <$> (parens $ commaSep identifier)
-    reservedOp ":="
-    _ <- pExp
-    return (n, l)
+    t <- option Nothing $ Just <$> symbol "("
+    case t of
+      Nothing -> do
+        reservedOp ":="
+        _ <- pExp
+        return (n, 0)
+      Just _  -> do
+        l <- length <$> (commaSep identifier)
+        _ <- symbol ")"
+        reservedOp ":="
+        _ <- pExp
+        return (n, l)
 \end{code}
 
 Rufen wir uns noch einmal die Syntaxdefinition von \Rec ins Gedächtnis. Diese
@@ -428,10 +437,18 @@ pProgram = semiSep1 pFn
 pFn :: Parser Def
 pFn = do
   name <- identifier
-  args <- parens $ commaSep identifier
-  reservedOp ":="
-  expr <- pExp
-  return $ (name, args, expr)
+  t <- option Nothing $ Just <$> symbol "("
+  case t of
+    Nothing -> do
+      reservedOp ":="
+      exp <- pExp
+      return $ (name, [], exp)
+    Just _  -> do
+      args <- commaSep identifier
+      _ <- symbol ")"
+      reservedOp ":="
+      exp <- pExp
+      return $ (name, args, exp)
 \end{code}
 
 Leider kann nicht jede Produktion so direkt übersetzt werden - insbesondere im
