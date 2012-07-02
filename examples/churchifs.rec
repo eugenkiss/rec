@@ -1,6 +1,5 @@
-// TODO: syntaktischer Zucker
-TRUE() := \onTrue.\onFalse.onTrue(\x. x);
-FALSE() := \onTrue.\onFalse.onFalse(\x. x);
-IF0(test) := \onTrue.\onFalse.(test(onTrue))(onFalse);
+TRUE(onTrue, onFalse) := onTrue(\x. x);
+FALSE(onTrue, onFalse) := onFalse(\x. x);
+IF0(test, onTrue, onFalse) := test(onTrue, onFalse);
 
-main() := ((IF0(TRUE()))(\x.100))(\y.200) // = 100
+main := IF0(TRUE, \_.100, \_.200) // = 100

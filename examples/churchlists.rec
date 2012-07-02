@@ -1,15 +1,14 @@
-//TODO: syntaktischen Zucker anwenden
-numerify(n) := (n(\x.x+1))(0);
-ZERO() := \f.\x.x;
-SUCC() := \n.\f.\z. f((n(f))(z));
-ONE()  := (SUCC())(ZERO());
-TWO()  := (SUCC())(ONE());
+numerify(n) := n(\x.x+1, 0);
+ZERO(f, x) := x;
+SUCC(n, f, z) := f(n(f, z));
+ONE := SUCC(ZERO);
+TWO := SUCC(ONE);
 
-VOID() := \x. x;
-NIL() := \onEmpty.\onPair. onEmpty(VOID());
-CONS(hd) := \tl.\onEmpty.\onPair.(onPair(hd))(tl);
-HEAD(list) := (list(VOID()))(\hd.\tl.hd);
-TAIL(list) := (list(VOID()))(\hd.\tl.tl);
-l() := (CONS(ZERO()))((CONS(TWO()))(NIL())) ;
+VOID := \x. x;
+NIL(onEmpty, onPair) := onEmpty(VOID);
+CONS(hd, tl, onEmpty, onPair) := onPair(hd, tl);
+HEAD(list) := list(VOID, \hd.\tl.hd);
+TAIL(list) := list(VOID, \hd.\tl.tl);
+l := CONS(ZERO, CONS(TWO, NIL));
 
-main() := numerify(HEAD(TAIL(l()))) // == 2
+main := numerify(HEAD(TAIL(l))) // == 2

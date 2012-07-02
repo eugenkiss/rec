@@ -1,20 +1,3 @@
-- Direktes zuweisen von top-level funktionen als parameter ermöglichen, sodass
-  nicht immer in einen lambda-ausdruck gewrappt werden muss
-  succ ist also syntaktischer zucker für \x1.\x2. ... \xn. succ(x1,x2,...,xn)
-  falls succ n parameter erhält
-  Falls n=0, dann steht succ für succ()
-  D.h., wenn man Programme in dem Stil schreibt:
-    succ() := \a b c. bla
-  Dann kann man im curried stil programmieren:
-    succ(a, b) == succ()(a)(b)
-
-  Falls aber
-    succ(a,b,c) := bla
-  Dann geht das nicht
-    succ == \a b c. succ(a,b,c)
-    succ() == ?
-    succ(a) == \b c. succ(a,b,c)
-
 - Beispiele und Tests (tests nur teilweise) mit neuem syntaktischen zucker
   verbessern
 - Code aufräumen!
@@ -49,11 +32,29 @@
     [1,2,3] => cons, 2 : [3,4] => cons(2,[3,4])
     [1] ++ [2] => append([1],[2])
 - Let bindings? (Let mittels Church encoding?)
-- alpha reduction: wenn eine Funktion lamret heißt, dann ihr einen neuen Namen
-  geben, damit sie nicht mit der lamret section kollidiert (1st pass)
+- alpha reduction: wenn eine Funktion lamret,IF,GOTO etc. heißt, dann ihr einen
+  neuen Namen geben, damit sie nicht mit der lamret section kollidiert (1st
+  pass)
 
 - Dokumentieren:
 
   - \f g y. ist syntaktischer zuker für \f.\g.\y.
   - succ()(a, b, c) ist syntaktischer zucker für succ()(a)(b)(c)
   - succ := bla ist syntaktischer Zucker für succ() := bla
+  - Direktes zuweisen von top-level funktionen als parameter ermöglichen, sodass
+    nicht immer in einen lambda-ausdruck gewrappt werden muss
+    succ ist also syntaktischer zucker für \x1.\x2. ... \xn. succ(x1,x2,...,xn)
+    falls succ n parameter erhält
+    Falls n=0, dann steht succ für succ()
+    D.h., wenn man Programme in dem Stil schreibt:
+      succ() := \a b c. bla
+    Dann kann man im curried stil programmieren:
+      succ(a, b) == succ()(a)(b)
+
+    Falls aber
+      succ(a,b,c) := bla
+    Dann geht das nicht
+      succ == \a b c. succ(a,b,c)
+      succ() == ?
+      succ(a) == \b c. succ(a,b,c)
+

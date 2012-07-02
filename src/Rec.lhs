@@ -349,7 +349,7 @@ lexDef
   , Token.commentEnd      = "*/"
   , Token.commentLine     = "//"
   , Token.nestedComments  = True
-  , Token.identStart      = letter
+  , Token.identStart      = letter <|> oneOf "_"
   , Token.identLetter     = alphaNum <|> oneOf "_"
   , Token.opStart         = Token.opLetter lexDef
   , Token.opLetter        = oneOf (concat (Token.reservedOpNames lexDef))
@@ -375,7 +375,7 @@ symbol     = Token.symbol lexer
 % und syntaktischen zucker entfernung)
 
 \begin{code}
-type Parser a = GenParser Char (M.Map Name Int, Int) a
+type Parser a = GenParser Char (M.Map Name Int, [Int]) a
 \end{code}
 
 Kommen wir nun zum eigentlichen Parsen. Die Funktion |parse| erhält als Eingabe
@@ -389,15 +389,15 @@ Eingabe.
 
 \begin{code}
 parse :: String -> Either String Program
-parse source = mkStdParser pProgram (parseDefs source, 1) whiteSpace source
+parse source = mkStdParser pProgram (parseDefs source, [1..]) whiteSpace source
 
 parse' :: String -> Program
-parse' source = mkStdParser' pProgram (parseDefs source, 1) whiteSpace source
+parse' source = mkStdParser' pProgram (parseDefs source, [1..]) whiteSpace source
 
 -- TODO: explain why needed
 -- TODO: replace with regular exp
 parseDefs :: String -> M.Map Name Int
-parseDefs source = case mkStdParser (semiSep1 p) (M.empty, 0) whiteSpace source of
+parseDefs source = case mkStdParser (semiSep1 p) (M.empty, []) whiteSpace source of
                      Right r -> M.fromList r
                      Left  _ -> M.empty -- errors are found in 2. pass anyway
   where
@@ -502,17 +502,17 @@ Hier nun noch die restlichen Parser:
 
 \begin{code}
 pLam = do
-  (_,i) <- getState
   _ <- symbol "\\"
   xs <- sepBy1 identifier whiteSpace
   _ <- symbol "."
-  updateState (\(m, i) -> (m, i + length xs))
+  (is, rest) <- (splitAt (length xs) . snd) <$> getState
+  updateState (\(m, _) -> (m, rest))
   e <- pExp
-  return $ mkLamChain i xs e
+  return $ mkLamChain is xs e
   where
-  mkLamChain i [x] e = Lam i x e
-  mkLamChain i (x:xs) e = Lam i x (mkLamChain (i+1) xs e)
-  mkLamChain _ [] _ = error "Impossible! Parsing guarantees at least one argument!"
+  mkLamChain [i] [x] e = Lam i x e
+  mkLamChain (i:is) (x:xs) e = Lam i x (mkLamChain is xs e)
+  mkLamChain _ _ _ = error "Impossible! Parsing guarantees at least one argument!"
 \end{code}
 
 TODO: Kommaseparierte Elemente
@@ -524,11 +524,6 @@ pLAp =
        ;return $ mkLApChain (reverse (l:pars))
        })
     <|>
-    --try (do {l <- try pAp <|> try (parens $ pLam) <|> try pVar
-    --   ;args <- parens $ commaSep pExp
-    --   ;return $ mkLApChain (reverse (l:args))
-    --   })
-    -- <|>
     do {l <- parens pExp
        ;e <- parens pExp
        ;return $ LAp l e
@@ -538,22 +533,38 @@ pLAp =
          mkLApChain [] = error "Impossible due to parsing!"
 
 pAp = do
-  {--
-  fn <- identifier
-  args <- parens $ commaSep pExp
-  return $ Ap fn args
-  --}
   fn <- identifier
   t <- M.lookup fn . fst <$> getState
   case t of
-    Nothing -> fail "definition for application not found"
-               --do args <- parens $ commaSep pExp
-               --   return $ Ap fn args
-    Just n -> do
-      args <- parens $ commaSep pExp
-      if length args == n
-         then return $ Ap fn args
-         else fail "incorrect amount of arguments"
+    Nothing -> fail "definition for application not found!"
+    Just n  -> do
+      t <- option Nothing $ Just <$> (symbol "(")
+      args <-
+        case t of
+          Nothing -> return []
+          Just _  -> do
+            xs <- commaSep pExp
+            _ <- symbol ")"
+            return xs
+      let n0 = length args
+      case () of
+        _ | n0 >  n   -> fail "too many arguments for application!"
+          | n0 == n   -> return $ Ap fn args
+          | otherwise -> do -- n0 < n, i.e. syntactic sugar
+              let d = n - n0
+              (is, rest) <- (splitAt d . snd) <$> getState
+              updateState (\(m, _) -> (m, rest))
+              let as  = map ('x' :) (map show [1..])
+                  ls  = take d (as \\ (getNames args))
+                  ls' = map Var ls
+              return $ mkLamChain fn (args ++ ls') ls is
+  where
+  mkLamChain fn as [] []
+    = Ap fn as
+  mkLamChain fn as (l:ls) (i:is)
+    = Lam i l $ mkLamChain fn as ls is
+  mkLamChain _ _ _ _ = error "Impossible!"
+
 
 pIf = do
   reserved "if"
