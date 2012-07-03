@@ -375,7 +375,7 @@ symbol     = Token.symbol lexer
 % und syntaktischen zucker entfernung)
 
 \begin{code}
-type Parser a = GenParser Char (M.Map Name Int, [Int]) a
+type Parser a = GenParser Char (M.Map Name Int, [Int], [Name]) a
 \end{code}
 
 Kommen wir nun zum eigentlichen Parsen. Die Funktion |parse| erhält als Eingabe
@@ -389,15 +389,15 @@ Eingabe.
 
 \begin{code}
 parse :: String -> Either String Program
-parse source = mkStdParser pProgram (parseDefs source, [1..]) whiteSpace source
+parse source = mkStdParser pProgram (parseDefs source, [1..], []) whiteSpace source
 
 parse' :: String -> Program
-parse' source = mkStdParser' pProgram (parseDefs source, [1..]) whiteSpace source
+parse' source = mkStdParser' pProgram (parseDefs source, [1..], []) whiteSpace source
 
 -- TODO: explain why needed
 -- TODO: replace with regular exp
 parseDefs :: String -> M.Map Name Int
-parseDefs source = case mkStdParser (semiSep1 p) (M.empty, []) whiteSpace source of
+parseDefs source = case mkStdParser (semiSep1 p) (M.empty, [], []) whiteSpace source of
                      Right r -> M.fromList r
                      Left  _ -> M.empty -- errors are found in 2. pass anyway
   where
@@ -445,6 +445,7 @@ pFn = do
       return $ (name, [], exp)
     Just _  -> do
       args <- commaSep identifier
+      updateState $ \(m, is, _) -> (m, is, args)
       _ <- symbol ")"
       reservedOp ":="
       exp <- pExp
@@ -505,8 +506,8 @@ pLam = do
   _ <- symbol "\\"
   xs <- sepBy1 identifier whiteSpace
   _ <- symbol "."
-  (is, rest) <- (splitAt (length xs) . snd) <$> getState
-  updateState (\(m, _) -> (m, rest))
+  (is, rest) <- (splitAt (length xs) . (\(_, x, _)->x)) <$> getState
+  updateState (\(m, _, bound) -> (m, rest, bound ++ xs))
   e <- pExp
   return $ mkLamChain is xs e
   where
@@ -534,7 +535,9 @@ pLAp =
 
 pAp = do
   fn <- identifier
-  t <- M.lookup fn . fst <$> getState
+  (_, _, bound) <- getState
+  when (fn `elem` bound) (fail "d'oh!")
+  t <- M.lookup fn . (\(x,_,_)->x) <$> getState
   case t of
     Nothing -> fail "definition for application not found!"
     Just 0  -> do
