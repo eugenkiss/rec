@@ -1,4 +1,4 @@
-- buggy churchlists.rec in tests übernehmen
+- Beispiele mit syntaktischem Zucker verbessern!
 - Code aufräumen!
 - Mit Grep nach TODO's suchen!
 - Lint drüber laufen lassen
@@ -14,8 +14,22 @@
   - succ()(a, b, c) ist syntaktischer zucker für succ()(a)(b)(c)
   - succ := bla ist syntaktischer Zucker für succ() := bla
   - succ ist syntaktischer Zucker für succ(), falls succ toplevel fkt.
+    mit 0 Parametern ist
     Das gilt insbesondere für eine Applikation succ(a,b), die wie folgt zu
     interpretieren ist: succ()(a,b)
+  - Direktes zuweisen von top-level funktionen als parameter ermöglichen, sodass
+    nicht immer in einen lambda-ausdruck gewrappt werden muss
+    succ ist also syntaktischer zucker für \x1.\x2. ... \xn. succ(x1,x2,...,xn)
+    falls succ n parameter erhält
+    Falls n=0, dann steht succ für succ()
+      (succ(a,b,c) steht in dem Fall dann für succ()(a,b,c)))
+    Falls n=3
+      succ == succ() == \a b c. succ(a,b,c)
+      succ(a) == \b c. succ(a,b,c)
+      succ(a, b) == \c. succ(a,b,c)
+      succ(a, b, c) == succ(a,b,c)
+      succ(a, b, c, d) == succ(a,b,c)(d)
+      ...
 
 
 FUTURE

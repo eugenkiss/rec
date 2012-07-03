@@ -549,13 +549,34 @@ pAp = do
           _ <- symbol ")"
           return $ mkLApChain (reverse $ (Ap fn []) : args)
     Just n  -> do
-      args <- parens $ commaSep pExp
-      if (length args) /= n
-         then fail "incorrect number of arguments!"
-         else return $ Ap fn args
-   where mkLApChain [e]    = e
-         mkLApChain (e:es) = LAp (mkLApChain es) e
-         mkLApChain [] = error "Impossible due to parsing!"
+      t <- option Nothing $ Just <$> (symbol "(")
+      args <-
+        case t of
+          Nothing -> return []
+          Just _  -> do
+            xs <- commaSep pExp
+            _ <- symbol ")"
+            return xs
+      let n0 = length args
+      case () of
+        _ | n0 == n   -> return $ Ap fn args
+          | n0 >  n   -> return $
+              mkLApChain (reverse $ (Ap fn (take n args)) : (drop n args))
+          | otherwise -> do -- n0 < n, i.e. syntactic sugar
+              let d = n - n0
+              (is, rest) <- (splitAt d . (\(_,x,_)->x)) <$> getState
+              updateState (\(m, _, bound) -> (m, rest, bound))
+              let as  = map ('x' :) (map show [1..])
+                  ls  = take d (as \\ (getNames args))
+                  ls' = map Var ls
+              return $ mkLamChain fn (args ++ ls') ls is
+   where
+   mkLApChain [e]    = e
+   mkLApChain (e:es) = LAp (mkLApChain es) e
+   mkLApChain [] = error "Impossible due to parsing!"
+   mkLamChain fn as [] [] = Ap fn as
+   mkLamChain fn as (l:ls) (i:is) = Lam i l $ mkLamChain fn as ls is
+   mkLamChain _ _ _ _ = error "Impossible!"
 
 
 pIf = do
