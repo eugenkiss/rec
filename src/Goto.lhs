@@ -60,6 +60,8 @@ data Program
   | IfElse BExp Program Program
   | Label  LId Program
   | Seq    [Program]
+  | Loop   AExp Program
+  | While  BExp Program
   -- augmented constructors
   | Push AExp -- push the result of the arithmetic expression into the stack
   | Pop  VId  -- pop the topmost stack entry into a variable
@@ -111,6 +113,14 @@ pprint = show . pprint'
 
 pprint' :: Program -> Doc
 pprint' (Assign v a) = text v <+> text ":=" <+> text (show a)
+pprint' (Loop a p) =
+    text "WHILE" <+> text (show a) <+> text "DO" $+$
+      nest 2 (pprint' p)                         $+$
+    nest 0 (text "END")
+pprint' (While b p) =
+    text "WHILE" <+> text (show b) <+> text "DO" $+$
+      nest 2 (pprint' p)                         $+$
+    nest 0 (text "END")
 pprint' (If b p) =
     text "IF" <+> text (show b) <+> text "THEN" $+$
       nest 2 (pprint' p)                        $+$
@@ -168,8 +178,10 @@ instance Show Program where
 gotoDef
   = javaStyle
   { Token.reservedNames =
-      [ "GOTO", "HALT", "END", "IF", "THEN", "ELSE"
-      , "PUSH", "POP", "PEEK"
+      [ "GOTO", "HALT", "END", "IF", "THEN", "ELSE", "DO"
+      , "PUSH", "POP", "PEEK", "PUSH_HEAP", "PEEK_HEAP"
+      , "CALL", "RETURN", "CALL_CLOSURE", "CLOSURIZE"
+      , "LOOP", "WHILE"
       ]
   , Token.reservedOpNames =
       [ ":="
@@ -223,6 +235,8 @@ pStmnt
   [ pLabeledOrNot pIfElse
   , pLabeledOrNot pIf
   , pLabeledOrNot pIfStrict
+  , pLabeledOrNot pLoop
+  , pLabeledOrNot pWhile
   , pLabeledOrNot pGoto
   , pLabeledOrNot pHalt
   , pLabeledOrNot pPush
@@ -350,6 +364,24 @@ pAssign = do
   reservedOp ":="
   s <- pAExp
   return $ Assign ident s
+
+pLoop :: Parser Program
+pLoop = do
+  reserved "LOOP"
+  a <- pAExp
+  reserved "DO"
+  body <- pProgram
+  reserved "END"
+  return $ Loop a body
+
+pWhile :: Parser Program
+pWhile = do
+  reserved "WHILE"
+  cond <- pBExp
+  reserved "DO"
+  body <- pProgram
+  reserved "END"
+  return $ While cond body
 
 pIfStrict :: Parser Program
 pIfStrict = do
@@ -736,6 +768,41 @@ Now, here come the IF instructions.
     | Var _ <- x = return p
 \end{code}
 
+`LOOP a DO P END` becomes
+
+\begin{verbatim}
+v := a;
+Mx: IF v = 0 THEN GOTO My END;
+v := v - 1;
+GOTO My;
+My: x0 := x0 + 0
+\end{verbatim}
+
+\begin{code}
+  go (Loop a p) = do
+    t <- mkLoop a p
+    go t
+\end{code}
+
+`WHILE b DO P END` becomes
+
+\begin{verbatim}
+Mx: IF !b THEN GOTO My;
+P;
+GOTO Mx;
+My: x0 := x0 + 0
+\end{verbatim}
+
+\begin{code}
+  go (While cond p) = do
+    mx <- newLId
+    my <- newLId
+    go $  Label mx (If (BNegOp cond) (Goto my))
+       <> p
+       <> Goto mx
+       <> Label my nop
+\end{code}
+
 `IF a o b THEN P END` becomes
 
 \begin{verbatim}
@@ -987,6 +1054,8 @@ getVIds = nub . go
   go (Halt)              = []
   go (Goto _)            = []
   go (Assign v aexp)     = v : getVIdsInAExp aexp
+  go (Loop aexp p)       = getVIdsInAExp aexp ++ go p
+  go (While bexp p)      = getVIdsInBExp bexp ++ go p
   go (If bexp p)         = getVIdsInBExp bexp ++ go p
   go (IfElse bexp p1 p2) = getVIdsInBExp bexp ++ go p1 ++ go p2
   go (Push aexp)         = getVIdsInAExp aexp
@@ -1039,6 +1108,8 @@ renameVId from to ast = case ast of
   Halt              -> Halt
   Goto l            -> Goto l
   Assign v aexp     -> Assign (r v) (rAExp aexp)
+  Loop aexp p       -> Loop (rAExp aexp) (rVId p)
+  While bexp p      -> While (rBExp bexp) (rVId p)
   If bexp p         -> If (rBExp bexp) (rVId p)
   IfElse bexp p1 p2 -> IfElse (rBExp bexp) (rVId p1) (rVId p2)
   Push aexp         -> Push (rAExp aexp)
@@ -1131,6 +1202,8 @@ getLIds = nub . go
   go (Halt)           = []
   go (Goto l)         = [l]
   go (Assign _ _)     = []
+  go (Loop _ p)       = go p
+  go (While _ p)      = go p
   go (If _ p)         = go p
   go (IfElse _ p1 p2) = go p1 ++ go p2
   go (Label l p)      = l : go p

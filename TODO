@@ -1,6 +1,4 @@
 - buggy churchlists.rec in tests übernehmen
-- Allow LOOP and WHILE Schleifen in GOTO!
-- CLOSURIZE zu MAKE_CLOSURE!
 - Code aufräumen!
 - Mit Grep nach TODO's suchen!
 - Lint drüber laufen lassen
@@ -23,6 +21,7 @@
 FUTURE
 ======
 
+- CLOSURIZE zu MAKE_CLOSURE!
 - Prelude! (map, cons etc.) Falls aber eine Funktion mit demselben Namen schon
   existert, dann prelude definition *nicht* verwenden. Und prelude definitionen
   nur einfügen, wenn sie auch benutzt werden!

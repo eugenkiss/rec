@@ -99,6 +99,8 @@ tests =
   , testCase "goto/arithmetic13" testArithmetic13
   , testCase "goto/arithmetic14" testArithmetic14
   , testCase "goto/arithmetic15" testArithmetic15
+  , testCase "goto/loop1" testLoop1
+  , testCase "goto/while1" testWhile1
   , testCase "goto/looping1" testLooping1
   , testCase "goto/looping2" testLooping2
   , testCase "goto/control1" testControl1
@@ -374,6 +376,14 @@ testArithmetic14
 testArithmetic15
     = runProgram' [10, 1] "x0 := 16 / 2^2 + (x1 * (x2 % 2)) - 1"
   @?= 13
+
+testLoop1
+    = runProgram' [10] "LOOP x1 DO x0 := x0 + 1; x1 := x2 + 1 END"
+  @?= 10
+
+testWhile1
+    = runProgram' [10] "x3 := x1 + 0; WHILE x3 != 0 DO x3 := x3 - 1; x0 := x0 + 1; x1 := x2 + 1 END"
+  @?= 10
 
 testLooping1 = runProgram' [10] p @?= 10
   where
