@@ -15,7 +15,7 @@ import qualified Rec as R
 genRec :: Program -> R.Program
 genRec p = mainDef : map go ps'
   where
-  Seq ps' = case (simplify . desugarStack . simplify) p of
+  Seq ps' = case (simplify . desugarHeap . desugarStack . simplify) p of
               Seq ps -> Seq ps
               x      -> Seq [x]
   l  = length $ getVIds $ Seq ps'

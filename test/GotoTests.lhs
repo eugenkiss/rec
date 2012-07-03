@@ -109,11 +109,16 @@ tests =
   -- Stack
   , testCase "goto/stack1" testStack1
   , testCase "goto/stack2" testStack2
+  -- Heap
+  , testCase "goto/heap1" testHeap1
+  , testCase "goto/heap2" testHeap2
   -- Rec
   , testCase "goto/rec1" testGenRec1
   , testCase "goto/rec2" testGenRec2
   , testCase "goto/rec3" testGenRec3
   , testCase "goto/rec4" testGenRec4
+  , testCase "goto/rec5" testGenRec5
+  , testCase "goto/rec6" testGenRec6
   ]
 
 -- Parsing/Lexing
@@ -455,11 +460,32 @@ testStack1 = runProgram' [] p @?= 10
 
 testStack2 = eval (strictify $ parse' p) [] @?= 3
   where
-  p =  "PUSH 1;"
-    ++ "PUSH 2;"
+  p =  "PUSH 2;"
     ++ "x0 := POP;"
+    ++ "PUSH 2;"
     ++ "PUSH 3;"
-    ++ "x0 := PEEK 3"
+    ++ "x0 := PEEK 2"
+
+
+-- Heap tests
+-------------------------
+
+testHeap1 = runProgram' [] p @?= 10
+  where
+  p =  "PUSH_HEAP 1;"
+    ++ "PUSH_HEAP 10;"
+    ++ "PUSH_HEAP 24;"
+    ++ "PUSH_HEAP 101;"
+    ++ "PUSH_HEAP 202;"
+    ++ "PUSH_HEAP 202;"
+    ++ "PUSH_HEAP 202;"
+    ++ "x0 := PEEK_HEAP 2"
+
+testHeap2 = eval (strictify $ parse' p) [] @?= 3
+  where
+  p =  "PUSH_HEAP 1;"
+    ++ "PUSH_HEAP 3;"
+    ++ "x0 := PEEK_HEAP 2"
 
 
 -- Rec translation tests
@@ -517,4 +543,14 @@ testGenRec4 = eval (Rec.genGoto . genRec . parse' $ p) [4] @?= 3
     ++ "    GOTO M1;"
     ++ "M2: x0 := a;"
     ++ "    HALT"
+
+testGenRec5 = eval (Rec.genGoto . genRec . parse' $ p) [] @?= 3
+  where
+  p =  "PUSH 3;"
+    ++ "x0 := POP"
+
+testGenRec6 = eval (Rec.genGoto . genRec . parse' $ p) [] @?= 3
+  where
+  p =  "PUSH_HEAP 3;"
+    ++ "x0 := PEEK_HEAP 1"
 \end{code}

@@ -1,6 +1,4 @@
 - buggy churchlists.rec in tests übernehmen
-- Test Push_Heap (auch in striktem Modus)
-- primitive Übersetzung nach GOTO strikt impelementieren
 - Allow LOOP and WHILE Schleifen in GOTO!
 - CLOSURIZE zu MAKE_CLOSURE!
 - Code aufräumen!
@@ -34,7 +32,7 @@ FUTURE
   Benutze Template Haskell um stdlib zur compilierzeit in die korrekte Stelle
   einzufügen.
 - Template Haskell auch für Testfälle nutzen
-- Syntaktischer Zucker für Listen? 
+- Syntaktischer Zucker für Listen?
     [1,2,3] => cons, 2 : [3,4] => cons(2,[3,4])
     [1] ++ [2] => append([1],[2])
 - Let bindings? (Let mittels Church encoding?)

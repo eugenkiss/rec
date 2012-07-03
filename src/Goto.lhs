@@ -19,6 +19,7 @@ module Goto
   , pprint
   , desugar
   , desugarStack
+  , desugarHeap
   , simplify
   , strictify
   , getVIds -- because cyclic dependancies are disallowed
@@ -1466,6 +1467,40 @@ desugarStack p
   go p = return p
 \end{code}
 
+TODO
+\begin{code}
+desugarHeap :: Program -> Program
+desugarHeap p
+  = evalState (go p)
+      TransformRecord
+      { _vIdStream = vIdStream \\ (getVIds p)
+      , _lIdStream = lIdStream \\ (getLIds p)
+      }
+  where
+  go (PushHeap aexp) = do
+    p <- genPairCode "h" aexp (Var "h")
+    go p
+  go (PeekHeap x0 aexp) = do
+    s0 <- newVId
+    p1 <- genSndCode s0 (Var s0)
+    p2 <- mkLoop (AOp "-" (Var "hp") aexp) p1
+    p3 <- genFstCode x0 (Var s0)
+    go $  Assign s0 (Var "h")
+       <> p2
+       <> p3
+  -- Mx: x0 := x0 + 0 -- Do nothing!
+  go p@(Label _ (Assign "x0" (AOp "+" (Var "x0") (Num 0)))) = return p
+  -- Mx: P
+  go (Label l p) = go $ Label l nop <> p
+  -- P1; P2;...
+  go (Seq ps) = liftM (Seq . flatten') $ mapM go ps
+      where
+      flatten' = foldr f []
+      f (Seq ps) acc = ps ++ acc
+      f x        acc = x : acc
+  go p = return p
+\end{code}
+
 Some helper functions for the cantor encoding. Wie im Skript
 
 \url{http://de.wikipedia.org/wiki/Cantorsche_Paarungsfunktion}
@@ -1770,6 +1805,38 @@ PEEK(n): (n is offset from bottom of stack)
     p2 <- mkLoop (AOp "-" (Var "sp") aexp) p1
     p3 <- genFstCode x0 (Var s0)
     go $  Assign s0 (Var "s")
+       <> p2
+       <> p3
+\end{code}
+
+Desugar Heap Operations using Cantor encoding
+
+\begin{verbatim}
+PUSH_HEAP(a):
+- h  := pair(a, s)
+(- hp := hp + 1) (already done in desugar)
+\end{verbatim}
+
+\begin{code}
+  go (PushHeap aexp) = do
+    p <- genPairCode "h" aexp (Var "h")
+    go p
+\end{code}
+
+\begin{verbatim}
+PEEK_HEAP(n): (n is offset from bottom of heap)
+- h0 := h
+- do (hp - n) times: h0 := snd(h0)
+- x0 := fst(h0)
+\end{verbatim}
+
+\begin{code}
+  go (PeekHeap x0 aexp) = do
+    h0 <- newVId
+    p1 <- genSndCode h0 (Var h0)
+    p2 <- mkLoop (AOp "-" (Var "hp") aexp) p1
+    p3 <- genFstCode x0 (Var h0)
+    go $  Assign h0 (Var "h")
        <> p2
        <> p3
 \end{code}
