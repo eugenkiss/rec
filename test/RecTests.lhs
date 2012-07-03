@@ -62,6 +62,7 @@ tests = [ testCase "rec/parsing1" parsing1
         , testCase "rec/lambda23" lambda23
         , testCase "rec/lambda24" lambda24
         , testCase "rec/lambda25" lambda25
+        , testCase "rec/lambda26" lambda26
         ]
 
 parsing1 = parse' p @?= e
@@ -415,4 +416,10 @@ lambda25 = run' p [] @?= 23
     ++ "sum(xs) := foldl(\\x.\\y.x+y, 0, xs);\n"
 
     ++ "main := sum(filter(\\x. x%3=0 || x%5=0, iterateN(10, \\x.x+1, 0)))\n"
+
+-- regression
+lambda26 = run' p [] @?= 99
+  where
+  p =  "f := \\x y. y;"
+    ++ "main := f(77, f(88, 99))"
 \end{code}

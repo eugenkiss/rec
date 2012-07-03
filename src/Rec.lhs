@@ -906,7 +906,7 @@ genCallSequence fnNames paramMap freeMap (LAp e1@(Ap _ [(Lam _ _ _)]) e2@(Ap _ _
   <> genArgSequence (M.size paramMap) -- reset args
   <> genCallSequence fnNames paramMap freeMap rest
 --}
-
+{--
 genCallSequence fnNames paramMap freeMap (LAp e1@(LAp _ _) e2@(LAp _ _) : rest)
   =  mempty
   <> genCallSequence fnNames paramMap freeMap [e1]
@@ -919,6 +919,7 @@ genCallSequence fnNames paramMap freeMap (LAp e1@(LAp _ _) e2@(LAp _ _) : rest)
   <> genHArgSequence (M.size freeMap) -- reset free vars
   <> genArgSequence (M.size paramMap) -- reset args
   <> genCallSequence fnNames paramMap freeMap rest
+  --}
 \end{code}
 
 
@@ -1190,7 +1191,7 @@ It is important to have canonical order.
 
 \begin{code}
 getFreeVars :: [Name] -> [Name] -> Exp -> [Name]
-getFreeVars outer bound e = sort ((outer \\ bound) `intersect` (getNames [e]))
+getFreeVars outer bound e = nub $ sort ((outer \\ bound) `intersect` (getNames [e]))
 --getFreeVars outer bound e = (getFreeNames [e]) \\ bound
 \end{code}
 

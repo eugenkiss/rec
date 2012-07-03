@@ -6,9 +6,7 @@ TWO  := SUCC(ONE);
 
 VOID := \x. x;
 NIL := \onEmpty onPair. onEmpty(VOID);
-CONS(hd, tl) := \onEmpty onPair. onPair(hd, tl);
-//TODO: BUG! die folgende Zeile sollte genauso gut funktionieren!
-//CONS := \hd tl onEmpty onPair. onPair(hd, tl);
+CONS := \hd tl onEmpty onPair. onPair(hd, tl);
 HEAD(list) := list(VOID, \hd tl. hd);
 TAIL(list) := list(VOID, \hd tl. tl);
 l := CONS(ZERO, CONS(TWO, NIL));
