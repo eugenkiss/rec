@@ -3,13 +3,16 @@
     http://programmingpraxis.com/contents/standard-prelude/
     http://hackage.haskell.org/packages/archive/base/latest/doc/html/Prelude.html
 */
-void := \x. x;
-nil := \onEmpty onPair. onEmpty(void);
+
+// Church encoding for lists
+void         := \x. x;
+nil          := \onEmpty onPair. onEmpty(void);
 cons(hd, tl) := \onEmpty onPair. onPair(hd, tl);
 head(list) := list(void, \hd tl. hd);
 tail(list) := list(void, \hd tl. tl);
 null(list) := list(\_. 1, \_ _. 0);
 
+// Higher-order helper functions
 nth(list, n)
   := if n = 0
         then head(list)
@@ -48,15 +51,3 @@ foldr(op, base, xs)
         else op(head(xs), foldr(op, base, tail(xs)));
 
 sum(xs) := foldl(\x y. x + y, 0, xs);
-
-/*
-http://projecteuler.net/problem=1: If we list all the natural numbers below 10
-that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples
-is 23.
-*/
-main :=
-  sum(
-    filter(\x. x % 3 = 0 || x % 5 = 0,
-           iterateN(10, \x.x+1, 0)
-          )
-     )

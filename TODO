@@ -1,4 +1,4 @@
-- Beispiele mit syntaktischem Zucker verbessern!
+- CLOSURIZE zu MAKE_CLOSURE!
 - Code aufräumen!
 - Mit Grep nach TODO's suchen!
 - Lint drüber laufen lassen
@@ -30,12 +30,20 @@
       succ(a, b, c) == succ(a,b,c)
       succ(a, b, c, d) == succ(a,b,c)(d)
       ...
+    Styleguide: Auf der linken Seite soviele Parameter, wie die
+    Funktion i.A. auch verwendet wird, z.B.
+      ZERO    := \_ x. x;
+      SUCC(n) := \f z. f(n(f, z));
+    und nicht
+      ZERO(_, x) := x;
+      SUCC := \n f z. f(n(f, z));
+
+
 
 
 FUTURE
 ======
 
-- CLOSURIZE zu MAKE_CLOSURE!
 - Prelude! (map, cons etc.) Falls aber eine Funktion mit demselben Namen schon
   existert, dann prelude definition *nicht* verwenden. Und prelude definitionen
   nur einfügen, wenn sie auch benutzt werden!

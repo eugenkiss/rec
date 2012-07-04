@@ -1,34 +1,16 @@
-/* TODO:
-    http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.3.2
-    http://programmingpraxis.com/contents/standard-prelude/
-    http://hackage.haskell.org/packages/archive/base/latest/doc/html/Prelude.html
-*/
-void := \x. x;
-nil := \onEmpty onPair. onEmpty(void);
+// Church encoding for lists
+void         := \x. x;
+nil          := \onEmpty onPair. onEmpty(void);
 cons(hd, tl) := \onEmpty onPair. onPair(hd, tl);
-head(list) := list(void, \hd tl. hd);
-tail(list) := list(void, \hd tl. tl);
-null(list) := list(\_. 1, \_ _. 0);
+head(list)   := list(void, \hd tl. hd);
+tail(list)   := list(void, \hd tl. tl);
+null(list)   := list(\_. 1, \_ _. 0);
 
-nth(list, n)
-  := if n = 0
-        then head(list)
-        else nth(tail(list), n - 1);
-
-replicate(n, x)
-  := if n = 0
-        then nil()
-        else cons(x, replicate(n - 1, x));
-
+// Higher-order helper functions
 iterateN(n, f, x)
   := if n = 0
         then nil()
         else cons(x, iterateN(n - 1, f, f(x)));
-
-map(f, list)
-  := if null(list)
-        then nil()
-        else cons(f(head(list)), map(f, tail(list)));
 
 filter(f, list)
   := if null(list)
@@ -41,11 +23,6 @@ foldl(op, base, xs)
   := if null(xs)
         then base
         else foldl(op, op(base, head(xs)), tail(xs));
-
-foldr(op, base, xs)
-  := if null(xs)
-        then base
-        else op(head(xs), foldr(op, base, tail(xs)));
 
 sum(xs) := foldl(\x y. x + y, 0, xs);
 

@@ -1,7 +1,7 @@
 numerify(n) := n(\x. x + 1, 0);
-succ := \n f z. f(n(f, z));
+succ(n) := \f z. f(n(f, z));
 zero := \_ x. x;
 one  := succ(zero);
 two  := succ(one);
 
-main := numerify(succ(two)) // = 3
+main := numerify(succ(succ(two))) // = 4
