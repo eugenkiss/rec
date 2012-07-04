@@ -868,7 +868,7 @@ genCallSequence fnNames paramMap freeMap (Ap fn args : rest)
 
 \begin{code}
 {--genCallSequence fnNames paramMap freeMap (Lam i x (Lam j y e) : rest)
-  =  G.Closurize i (map (G.Var . (\x->lookup' x paramMap)) free)
+  =  G.MakeClosure i (map (G.Var . (\x->lookup' x paramMap)) free)
   <> G.Push (G.AOp "-" (G.Var "hp") (G.Num (genericLength free)))
   <> G.Call ("lambda" ++ show j) (length [y])
   <> genArgSequence (M.size paramMap) -- reset args
@@ -879,7 +879,7 @@ genCallSequence fnNames paramMap freeMap (Ap fn args : rest)
 
 \begin{code}
 genCallSequence fnNames paramMap freeMap (Lam i x e : rest)
-  =  G.Closurize i
+  =  G.MakeClosure i
        (map (G.Var . (\x -> case M.lookup x freeMap of
                               Just v  -> v
                               Nothing -> lookup' x paramMap))

@@ -71,7 +71,7 @@ data Program
   -- closures
   | PushHeap AExp
   | PeekHeap VId AExp
-  | Closurize Int [AExp]
+  | MakeClosure Int [AExp]
   | CallClosure AExp Int
   deriving Eq
 
@@ -144,10 +144,10 @@ pprint' (Return)   = text "RETURN"
 
 pprint' (PushHeap a)   = text "PUSH_HEAP" <+> text (show a)
 pprint' (PeekHeap v a) = text v <+> text ":= PEEK_HEAP" <+> text (show a)
-pprint' (Closurize p [])
-  = text "CLOSURIZE" <+> text (show p)
-pprint' (Closurize p args)
-  = text "CLOSURIZE" <+> hcat (punctuate comma $ (text . show) p : map (text . show) args)
+pprint' (MakeClosure p [])
+  = text "MAKE_CLOSURE" <+> text (show p)
+pprint' (MakeClosure p args)
+  = text "MAKE_CLOSURE" <+> hcat (punctuate comma $ (text . show) p : map (text . show) args)
 pprint' (CallClosure a n)
   = text "CALL_CLOSURE" <+> text (show a) PP.<> text "," <+> text (show n)
 \end{code}
@@ -180,7 +180,7 @@ gotoDef
   { Token.reservedNames =
       [ "GOTO", "HALT", "END", "IF", "THEN", "ELSE", "DO"
       , "PUSH", "POP", "PEEK", "PUSH_HEAP", "PEEK_HEAP"
-      , "CALL", "RETURN", "CALL_CLOSURE", "CLOSURIZE"
+      , "CALL", "RETURN", "CALL_CLOSURE", "MAKE_CLOSURE"
       , "LOOP", "WHILE"
       ]
   , Token.reservedOpNames =
@@ -247,7 +247,7 @@ pStmnt
   , pLabeledOrNot pPushHeap
   , pLabeledOrNot pPeekHeap
   , pLabeledOrNot pCallClosure
-  , pLabeledOrNot pClosurize
+  , pLabeledOrNot pMakeClosure
   , pLabeledOrNot pAssign
   ]
 \end{code}
@@ -290,14 +290,14 @@ pCallClosure
        n <- integer
        return $ CallClosure aexp (fromInteger n)
 
-pClosurize :: Parser Program
-pClosurize
-  = do reserved "CLOSURIZE"
+pMakeClosure :: Parser Program
+pMakeClosure
+  = do reserved "MAKE_CLOSURE"
        p <- integer
        args <- option [] (do { _ <- symbol ","
                              ; commaSep1 pAExp
                              })
-       return $ Closurize (fromInteger p) args
+       return $ MakeClosure (fromInteger p) args
 
 pPushHeap :: Parser Program
 pPushHeap = do
@@ -928,7 +928,7 @@ Here come the augmented constructors.
 \end{code}
 
 \begin{code}
-  go (Closurize p args) = do
+  go (MakeClosure p args) = do
     go $  mempty
        <> PushHeap (Num $ toInteger $ p)
        -- <> Push (Var "hp")
@@ -1065,7 +1065,7 @@ getVIds = nub . go
   go (Return)            = []
   go (PushHeap aexp)     = getVIdsInAExp aexp
   go (PeekHeap v aexp)   = v : getVIdsInAExp aexp
-  go (Closurize _ args)  = concatMap getVIdsInAExp args
+  go (MakeClosure _ args)  = concatMap getVIdsInAExp args
   go (CallClosure aexp _) = getVIdsInAExp aexp
   go (Label _ p)         = go p
   go (Seq ps)            = concatMap go ps
@@ -1119,7 +1119,7 @@ renameVId from to ast = case ast of
   Return            -> Return
   PushHeap aexp     -> PushHeap (rAExp aexp)
   PeekHeap v aexp   -> PeekHeap (r v) (rAExp aexp)
-  Closurize p args  -> Closurize p (map rAExp args)
+  MakeClosure p args  -> MakeClosure p (map rAExp args)
   CallClosure aexp n -> CallClosure (rAExp aexp) n
   Label l p         -> Label l (rVId p)
   Seq ps            -> Seq (map rVId ps)
@@ -1215,7 +1215,7 @@ getLIds = nub . go
   go (Return)         = []
   go (PushHeap _)     = []
   go (PeekHeap _ _)   = []
-  go (Closurize _ _)  = []
+  go (MakeClosure _ _)  = []
   go (CallClosure _ _) = []
 \end{code}
 
