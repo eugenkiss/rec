@@ -1,4 +1,23 @@
-\subsection{Kommandozeilenprogramm}
+\section{Kommandozeilenprogramm}
+
+Wie auch beim Kommandozeilenprogramm für REC wird hier nur kurz
+aufgelistet, welche Operationen das Kommandozeilenprogramm @goto@
+anbietet:
+
+\begin{itemize}
+\item Ausführung von Programmtexten: Dazu einfach @goto [DATEIPFAD]@\\
+(z.B. @goto examples/fac.goto@). Möchte man Argumente übergeben,
+so geht das so @goto examples/fac.goto -a 1,2,3@. Man kann auch
+explizit sein und @goto eval examples/fac.goto -a 1,2,3@ schreiben.
+
+\item Generierung von REC-Code: Dazu einfach @goto genrec [DATEIPFAD]@
+(z.B. @goto genrec examples/fac.goto@).
+
+\item Pretty Printing von Programmtexten: Dazu einfach @goto print [DATEIPFAD]@
+(z.B. @goto print examples/fac.goto@).
+
+\item Falls man jemals etwas vergisst hilft der Befehl @goto --help@.
+\end{itemize}
 
 % TODO: Einige Sachen nach Util auslagern
 

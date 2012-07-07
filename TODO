@@ -1,47 +1,27 @@
-- Code aufräumen!
+- Irgendwo hinschreiben, dass If Konstruktor und Ap eigenltich nicht zwingend benötigt
+  werden, da If mit Chruch und statt Ap Immer HAp benutzt werden könnte.
+- Code aufräumen ab GOTO!
 - Mit Grep nach TODO's suchen!
 - Lint drüber laufen lassen
 
-- use landin paper
 - find explanation of encoding of lists like I use, so that I can explain it
   with my own words.
-
-- create documentation code.pdf and look that it is correctlu formatted
-
-- Dokumentieren:
-  - \f g y. ist syntaktischer zuker für \f.\g.\y.
-  - succ()(a, b, c) ist syntaktischer zucker für succ()(a)(b)(c)
-  - succ := bla ist syntaktischer Zucker für succ() := bla
-  - succ ist syntaktischer Zucker für succ(), falls succ toplevel fkt.
-    mit 0 Parametern ist
-    Das gilt insbesondere für eine Applikation succ(a,b), die wie folgt zu
-    interpretieren ist: succ()(a,b)
-  - Direktes zuweisen von top-level funktionen als parameter ermöglichen, sodass
-    nicht immer in einen lambda-ausdruck gewrappt werden muss
-    succ ist also syntaktischer zucker für \x1.\x2. ... \xn. succ(x1,x2,...,xn)
-    falls succ n parameter erhält
-    Falls n=0, dann steht succ für succ()
-      (succ(a,b,c) steht in dem Fall dann für succ()(a,b,c)))
-    Falls n=3
-      succ == succ() == \a b c. succ(a,b,c)
-      succ(a) == \b c. succ(a,b,c)
-      succ(a, b) == \c. succ(a,b,c)
-      succ(a, b, c) == succ(a,b,c)
-      succ(a, b, c, d) == succ(a,b,c)(d)
-      ...
-    Styleguide: Auf der linken Seite soviele Parameter, wie die
-    Funktion i.A. auch verwendet wird, z.B.
-      ZERO    := \_ x. x;
-      SUCC(n) := \f z. f(n(f, z));
-    und nicht
-      ZERO(_, x) := x;
-      SUCC := \n f z. f(n(f, z));
-
-
 
 
 FUTURE
 ======
+
+- duplizierte Funktionsdefinitionen -> Fehler
+  -> write Test Case
+- keine main definition -> Fehler
+  -> write Test Case
+- beim 2. Pass: Variable, die weder freie noch gebundene Variable ist -> Fehler
+  (dazu aber Prelude vor dem 2.Pass hinzufügen!)
+  -> write Test Case
+- alpha reduction: wenn eine Funktion lamret,IF,GOTO etc. heißt, dann ihr einen
+  neuen Namen geben, damit sie nicht mit der lamret section kollidiert (1st
+  pass)
+  -> write Test Case
 
 - Prelude! (map, cons etc.) Falls aber eine Funktion mit demselben Namen schon
   existert, dann prelude definition *nicht* verwenden. Und prelude definitionen
@@ -55,8 +35,7 @@ FUTURE
 - Syntaktischer Zucker für Listen?
     [1,2,3] => cons, 2 : [3,4] => cons(2,[3,4])
     [1] ++ [2] => append([1],[2])
-- Let bindings? (Let mittels Church encoding?)
-- alpha reduction: wenn eine Funktion lamret,IF,GOTO etc. heißt, dann ihr einen
-  neuen Namen geben, damit sie nicht mit der lamret section kollidiert (1st
-  pass)
-
+- Let bindings? (Let mittels Church encoding?) (aber bitte recursive)
+- Evaluator soll bei nichtFinden keine Exception verursachen (z.B. zu oft Pushen),
+  sondern sich so verhalten, wie die Übersetzung mit Cantor würde (also einfach
+  0 als Pop ergebnis wenn stack leer).

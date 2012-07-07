@@ -1,5 +1,5 @@
 #!/bin/bash
-lhs2tex --tt -o doc/code.tex lhs2tex.tex
-latexmk -cd -pdf doc/code.tex
-latexmk -cd -c   doc/code.tex
-rm doc/code.ptb
+lhs2tex --tt -o code.tex lhs2tex.tex
+latexmk -cd -pdf code.tex
+latexmk -cd -c   code.tex
+rm code.ptb

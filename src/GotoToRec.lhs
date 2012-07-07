@@ -9,7 +9,7 @@ import Goto
 import qualified Rec as R
 \end{code}
 
-\subsection{Übersetzung nach Rec}
+\section{Übersetzung nach Rec}
 
 \begin{code}
 genRec :: Program -> R.Program

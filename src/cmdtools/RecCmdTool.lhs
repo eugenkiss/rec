@@ -1,7 +1,26 @@
-\subsection{Kommandozeilenprogramm}
+\section{Kommandozeilenprogramm}
 
 Zu guter Letzt wird in diesem Abschnitt das Kommandozeilenprogram @rec@
-definiert mit Hilfe der Bibliothek \emph{CmdArgs}...
+definiert mit Hilfe der Bibliothek \emph{CmdArgs}. Es würde zu weit
+gehen im Detail auf den Quellcode einzugehen. Es wird empfohlen auf
+die Dokumentation von CmdArgs zurückzugreifen. Trotzdem wird hier
+kurz angerissen welche Operationen das Kommandozeilenprogramm @rec@
+aufweisen soll.
+
+\begin{itemize}
+\item Ausführung von Programmtexten: Dazu einfach @rec [DATEIPFAD]@\\
+(z.B. @rec examples/churchifs.rec@). Möchte man Argumente übergeben,
+so geht das so @rec examples/fac.rec -a 1,2,3@. Man kann auch
+explizit sein und @rec eval examples/fac.rec -a 1,2,3@ schreiben.
+
+\item Generierung von GOTO-Code: Dazu einfach @rec gengoto [DATEIPFAD]@
+(z.B. @rec gengoto examples/churchifs.rec@).
+
+\item Pretty Printing von Programmtexten: Dazu einfach @rec print [DATEIPFAD]@
+(z.B. @rec print examples/churchifs.rec@).
+
+\item Falls man jemals etwas vergisst hilft der Befehl @rec --help@.
+\end{itemize}
 
 \begin{code}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -81,8 +100,6 @@ lexer    = Token.makeTokenParser haskellDef
 commaSep = Token.commaSep lexer
 natural  = Token.natural  lexer
 \end{code}
-
-\subsubsection{Pretty Printer}
 
 Es ist sinnvoll den generierten Goto Code speziell zu formatieren und zwar so,
 dass die Abschnitte durch freie Zeilen getrennt sind.

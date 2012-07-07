@@ -1,6 +1,6 @@
 *.pdf
 dist/*
-doc/code.tex
+code.tex
 test.goto
 test.rec
 recgoto.sublime-project

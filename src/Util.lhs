@@ -1,3 +1,5 @@
+\chapter{Hilfsfunktionen}
+
 \begin{code}
 -- | General utility functions for parsing/evaluation.
 module Util

@@ -28,17 +28,34 @@
 \usepackage{color}
 \usepackage{comment}
 
+\definecolor{LinkColor}{rgb}{0,0,0}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,%
+    linkcolor=LinkColor,%
+    citecolor=LinkColor,%
+    filecolor=LinkColor,%
+    menucolor=LinkColor,%
+    urlcolor=LinkColor}
+
 \lstdefinelanguage{Rec}
-  {emph={if,then,else},emphstyle=\bfseries,columns=flexible,
+  {basicstyle=\sffamily,mathescape,
+  emph={if,then,else},emphstyle=\bfseries,columns=flexible,
   literate={<=}{{$\leq$}}2 {>=}{{$\geq$}}2 {!=}{{$\neq$}}2
-  {*}{{$\cdot$}}1 {/}{{$\div$}}1
+  {\\}{{$\lambda$}}1
+  {*}{{$\cdot \ $}}1 {/}{{$\div$}}2 {//}{{//}}2 {/*}{{/*}}2 {*/}{{*/}}2
+  {M1}{{M$_1$}}2
   }
 
 \lstdefinelanguage{Goto}
-  {basicstyle=\ttfamily,
-  emph={IF,THEN,ELSE,END,GOTO,PEEK,PUSH,POP,RETURN,CALL},columns=flexible,
+  {basicstyle=\ttfamily,mathescape,
+  emph={IF,THEN,ELSE,END,GOTO,PEEK,PUSH,POP,RETURN,CALL},columns=fixed,
   literate={<=}{{$\leq$}}2 {>=}{{$\geq$}}2 {!=}{{$\neq$}}2
-  {*}{{$\cdot$}}1 {/}{{$\div$}}1
+  {*}{{$\cdot \ $}}1 {/}{{$\div$}}1 {^}{{$^\wedge$}}1 {\%}{{$\%$}}1
+  {//}{{//}}2 {/*}{{/*}}2 {*/}{{*/}}2
+  {M1}{{M$_1$}}2 {M2}{{M$_2$}}2
+  {x0}{{x$_0$}}2 {x1}{{x$_1$}}2 {x2}{{x$_2$}}2 {x3}{{x$_3$}}2 {x4}{{x$_4$}}2
+  {xi}{{x$_i$}}2 {xj}{{x$_j$}}2 {xk}{{x$_k$}}2
+  {t0}{{t$_0$}}2 {t1}{{t$_1$}}2 {t2}{{t$_2$}}2
   }
 
 \newenvironment{myindent}[1]%
@@ -48,23 +65,35 @@
  }
  {\end{list}}
 
+\title{Quellcode zur Bachelor-Arbeit
+``Funktionale Programmierung und Berechenbarkeit''}
+\author{Evgenij Kiss}
+
+% disables chapter, section and subsection numbering
+\setcounter{secnumdepth}{-1}
+
 %include lhs2tex.fmt
 \begin{document}
-\chapter{Quellcode}
+\maketitle
+\tableofcontents
 
-Einführung erklüarung...
+\chapter{Einführung}
 
-Fokus der Kommentare liegt hier ofensichtlich mehr auf der konkreten
-Implementierung als auf der Hintergrundkonzepte...
-
-Quellcode wurde im Literate Programming Stil verfasst.
-
-GHC Version, cabal file, folder aufbau, tests...
-
-Es wird davon ausgegangen, dass der Leser ein wenig vertraut mit Haskell ist.
-
-Bei der Darstellugn von Quellcode werden einige Freiheiten verwendet, sodass er
-ästhetischer ist ...
+Diese Datei beinhaltet den Quellcode und die Dokumentation zu der
+Implementierung der Compiler für die Sprachen, die ich in meiner Bachelor-Arbeit
+``Funktionale Programmierung und Berechenbarkeit'' erstellt habe. Der Quellcode
+ist im \emph{Literate Programming}-Stil gehalten. Das bedeutet, grob, dass der
+Fokus des Quellcodes eher auf einer nachvollziehbaren Dokumentation liegt und
+die Reihenfolge der Programmausdrücke diesbezüglich ausgelegt ist. Dennoch
+handelt es sich hier nicht einfach um den Inhalt der Bachelorarbeit erweitert um
+Programmtexte. Hat der Text der Bachelorarbeit eher Wert auf die allgemeine
+Beschreibung der Ideen gelegt, so liegt der Fokus dieses Textes hauptsächlich
+auf den Implementierungsdetails, wobei doch versucht wird immerhin knapp auf die
+allgemeinen Ideen an passender Stelle einzugehen. Trotzdem ist es ratsam, sich
+zuerst die Bachelor-Arbeit durchzulesen, da ansonsten einige Begründungen wenig
+Sinn machen werden. Weiterhin wird davon ausgegangen, dass der Leser vertraut
+ist mit Haskell und einigen, in diesem Projekt verwendeten, Bibliotheken
+(speziell \emph{Parsec}).
 
 Die Ordnerstruktur des Projekts sieht folgendermaßen aus\footnote{Unwichtige
 Dateien sind aus Gründen der Prägnanz nicht aufgelistet.}:
@@ -72,6 +101,8 @@ Dateien sind aus Gründen der Prägnanz nicht aufgelistet.}:
 \begin{myindent}{3mm}
 \begin{verbatim}
 |-- recgoto.cabal
+|-- lhs2tex.tex
+|-- code2pdf.sh
 |-- Setup.hs
 |-- src
 |   |-- Rec.lhs
@@ -86,14 +117,18 @@ Dateien sind aus Gründen der Prägnanz nicht aufgelistet.}:
 \end{verbatim}
 \end{myindent}
 %
-@recgoto.cabal@ und @Setup.hs@ werden für die Installation des Projektes
+Um das Projekt zu installieren wird eine Haskell-Installation benötigt. Es wird
+davon ausgegangen, dass der GHC Haskell-Compiler in der Version 7.4 installiert
+ist. @recgoto.cabal@ und @Setup.hs@ werden für die Installation des Projektes
 benötigt. Die Installtion kann mit dem Kommandozeilenbefehl @cabal install@ im
 Projektordner geschehen. Dabei werden die Kommandozeilenprogramme @rec@ und
 @goto@ installiert mit denen unter anderem entsprechende Programmtexte
-ausgeführt werden können. Im Ordner @examples@ befinden sich eingie
+ausgeführt werden können. Im Ordner @examples@ befinden sich einige
 Beispielprogrammtexte mit denen die Kommandozeilenprogramme ausprobiert werden
-können.  In dem Ordner @src@ befindet
-sich der Quellcode dieses Projekts.
+können. In dem Ordner @src@ befindet sich der Quellcode dieses Projekts. Um
+diese PDF zu generieren muss das Skript @code2pdf.sh@ ausgeführt werden. Dazu
+muss zusätzlich eine Latex-Distribution auf dem System vorhanden sein und das
+Programm \emph{lhs2tex}.
 
 Im Folgenden wird zuerst der Quellcode mitsamt Kommentaren der Dateien
 @Rec.lhs@ und @RecCmdTool.lhs@ aufgeführt, gefolgt von @Goto.lhs@,

@@ -1,4 +1,4 @@
-\section{Goto}
+\chapter{Goto}
 
 \begin{code}
 {-# LANGUAGE RankNTypes, PatternGuards #-}
@@ -49,7 +49,7 @@ import Util
 \end{code}
 
 
-\subsection{Abstrakte Syntax}
+\section{Abstrakte Syntax}
 
 \begin{code}
 data Program
@@ -104,7 +104,7 @@ instance Monoid Program where
 \end{code}
 
 
-\subsection{Pretty Printing}
+\section{Pretty Printing}
 
 
 \begin{code}
@@ -172,7 +172,7 @@ instance Show Program where
 \end{code}
 
 
-\subsection{Parser}
+\section{Parser}
 
 \begin{code}
 gotoDef
@@ -493,7 +493,7 @@ pVar = liftM Var (identifier <?> "identifier")
 \end{code}
 
 
-\subsection{Simplifizierung}
+\section{Simplifizierung}
 
 Transform a Goto program to a simplified subset so that the evaluator can be
 more concise.
@@ -521,7 +521,7 @@ simplify
 \end{code}
 
 
-\subsubsection{Desugaring statements}
+\subsection{Desugaring statements}
 
 % TODO: make desugarCall desugarPush desugarArith...
 
@@ -1019,7 +1019,7 @@ transformation.
 \end{code}
 
 
-\subsubsection{Normalizing variable identifiers}
+\subsection{Normalizing variable identifiers}
 
 Return a list without duplicates of all variable identifiers in the
 arithemtic expression.
@@ -1151,7 +1151,7 @@ normalizeVIds ast = foldr (uncurry renameVId) ast renameMappings
 \end{code}
 
 
-\subsubsection{Normalizing label identifiers}
+\subsection{Normalizing label identifiers}
 
 % Given a list of disjunctive rename mappings in the form [...,(from_i,
 % to_i),...] rename all occurences of 'from_i' as a label name to 'to_i' in the
@@ -1191,7 +1191,7 @@ normalizeLIds p = normalizeLIds (Seq [p])
 \end{code}
 
 
-\subsubsection{Removing redundancy}
+\subsection{Removing redundancy}
 
 Analyze the AST and return a list without duplicates of all used label names.
 
@@ -1270,7 +1270,7 @@ isRedundant _ = False
 \end{code}
 
 
-\subsubsection{Sonstiges}
+\subsection{Sonstiges}
 
 Analyze the AST and return a list without duplicates of all used label names
 but do not consider label names that are only used in a goto statement.
@@ -1335,7 +1335,7 @@ flatten x         = x
 \end{code}
 
 
-\subsection{Evaluation}
+\section{Evaluation}
 
 % TODO: comments, improve code
 
@@ -1478,7 +1478,7 @@ run' = flip $ mkStdRunner' parse eval
 \end{code}
 
 
-\subsection{Transformation to the strict subset}
+\section{Transformation to the strict subset}
 % TODO: anpassen an desugar
 
 Sinn von stricitfy ist es wirklich auf die strikte Version von GOTO
