@@ -762,13 +762,13 @@ getNames (If e1 e2 e3:rest)
   = getNames [e1, e2, e3] ++ getNames rest
 \end{code}
 
-|findDef| liefert bei Eingabe eines Funktionsnamens und eines REC Programms
-die vollständige Definition der gesuchten Funktion. Es wird davon ausgegangen,
-dass |findDef| im Quellcode nur so benutzt wird, dass ein Nichtfinden einer
-Definition nicht möglich ist. Im Grunde wird |findDef| nur benötigt, um die
-Definition der `\lstinline[language=Rec]$main$` Funktion zu finden, da ja nicht
-vorgeschrieben ist, an welcher Stelle im Quellcode sich die Definition befinden
-muss.
+|findDef| liefert bei Eingabe eines Funktionsnamens und eines REC Programms die
+vollständige Definition der gesuchten Funktion. Im Grunde wird |findDef| nur
+benötigt, um die Definition der `\lstinline[language=Rec]$main$` Funktion zu
+finden, da ja nicht vorgeschrieben ist, an welcher Stelle im Quellcode sich die
+Definition befinden muss. Da beim Parsen schon darauf geachtet wird, ob eine
+`\lstinline[language=Rec]|main|' Funktion vorhanden ist, ist ein Nichtfinden
+unmöglich.
 
 \begin{code}
 findDef :: Name -> Program -> Def
@@ -985,6 +985,7 @@ freie Variable zu interpretieren.
 genLamSec fnNames ((_, topargs, Lam i x e) : rest)
   = let t1 = G.Label ("lambda" ++ show i)
              $  mempty
+             -- TODO: Diese if-Abfrage müsste überflüssig sein
              <> (if (length free) /= 0
                    then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
                    else mempty)
@@ -1069,19 +1070,21 @@ genExpSeq fnNames paramMap freeMap (Num n : rest)
   <> genExpSeq fnNames paramMap freeMap rest
 \end{code}
 
-Variablen werden ebenfalls einfach in den Stack gepusht. Dabei wird darauf
-geachtet, dass die Variablen innerhalb des Ausdrucks auch definiert sind,
-also als Wert im zweiten bzw. dritten Parameter von |genExpSeq| auftauchen:
+Variablen werden ebenfalls einfach in den Stack gepusht. Dabei muss unterschieden
+werden, ob es sich um eine gebundene oder freie Instanz handelt. Je nachdem
+wird ein `\lstinline[language=Goto]|a$_x$|' oder ein
+`\lstinline[language=Goto]|h$_x$|' in den Stack gepusht. Wegen name shadowing
+haben gebundene Bezeichner Vorrang:
 
 \begin{code}
 genExpSeq fnNames paramMap freeMap (Var a : rest)
   =  mempty
-  <> case M.lookup a freeMap of
-       Just h  -> G.Push $ G.Var h
+  <> case M.lookup a paramMap of
+       Just p  -> G.Push $ G.Var p
        Nothing ->
-         case M.lookup a paramMap of
-           Just x  -> G.Push $ G.Var x
-           Nothing -> error "Blow up!"
+         case M.lookup a freeMap of
+           Just f  -> G.Push $ G.Var f
+           Nothing -> error "Impossible! Undefined identifier instance!"
   <> genExpSeq fnNames paramMap freeMap rest
 \end{code}
 

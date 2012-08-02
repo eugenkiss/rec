@@ -1,3 +1,6 @@
+- CallClosure Anzahl der Argumente ist überflüssig -> entfernen, da lamba-Ausdruck
+  immer nur einen  Parameter hat bei uns
+- HAp zu CAp für Closure Application
 - Irgendwo hinschreiben, dass If Konstruktor und Ap eigenltich nicht zwingend benötigt
   werden, da If mit Chruch und statt Ap Immer HAp benutzt werden könnte.
 - Code aufräumen ab GOTO!
@@ -6,6 +9,17 @@
 
 - find explanation of encoding of lists like I use, so that I can explain it
   with my own words.
+
+- write evaluator that spits out configurations as json list,
+  so that I can write a javascript app (maybe even dart or kotlin?)
+  that graphically shows code, content of certain vars (like pc,fp)
+  as well as stack (with distinguished stack frames as well es frame
+  pointer arrow) and heap. If heap resp. stack entry is an adress
+  of some sort (to code or to another stack/heap entry), try to
+  draw arrow to that location. Be able to step through the configs
+  and animate.
+  in presentation make the case for need of stack frames (patholocigal
+  cases e.g. recursion) and heap (upvar/downvar problem)
 
 
 FUTURE
@@ -32,10 +46,6 @@ FUTURE
   Benutze Template Haskell um stdlib zur compilierzeit in die korrekte Stelle
   einzufügen.
 - Template Haskell auch für Testfälle nutzen
-- Syntaktischer Zucker für Listen?
-    [1,2,3] => cons, 2 : [3,4] => cons(2,[3,4])
-    [1] ++ [2] => append([1],[2])
-- Let bindings? (Let mittels Church encoding?) (aber bitte recursive)
 - Evaluator soll bei nichtFinden keine Exception verursachen (z.B. zu oft Pushen),
   sondern sich so verhalten, wie die Übersetzung mit Cantor würde (also einfach
   0 als Pop ergebnis wenn stack leer).
