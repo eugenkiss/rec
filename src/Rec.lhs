@@ -441,7 +441,13 @@ Diese werden folgendermaßen übersetzt:
 
 \begin{code}
 pProgram :: Parser Program
-pProgram = semiSep1 pFn
+pProgram = do r <- check <$> semiSep1 pFn
+              r
+  where check r
+          | not $ "main" `elem` f r = fail "no main definition"
+          | length (f r) /= length (nub (f r)) = fail "duplicate definitions"
+          | otherwise = return r
+        f = map $ \(x,_,_) -> x
 
 pFn :: Parser Def
 pFn = do

@@ -6,10 +6,19 @@ import Test.HUnit hiding (Test)
 
 import Rec
 
+isLeft :: Either a b -> Bool
+isLeft (Left _) = True
+isLeft _        = False
+
+
 tests = [ testCase "rec/parsing1" parsing1
         , testCase "rec/parsing2" parsing2
         , testCase "rec/parsing3" parsing3
         , testCase "rec/parsing4" parsing4
+        , testCase "rec/parsing5" parsing5
+        , testCase "rec/parsing6" parsing6
+        , testCase "rec/parsing7" parsing7
+        , testCase "rec/parsing8" parsing8
         , testCase "rec/desugar1" desugar1
         , testCase "rec/desugar2" desugar2
         , testCase "rec/desugar3" desugar3
@@ -98,6 +107,22 @@ parsing4 = parse' p @?= e
   e =
     [ ("main",   [],    Lam 1 "x" (Ap "+" [Var "x", Var "x"]))
     ]
+
+parsing5 = assertBool "no main definition" $ isLeft $ parse p
+  where
+  p = "cool := 3"
+
+parsing6 = assertBool "duplicate function definition" $ isLeft $ parse p
+  where
+  p = "main := 1; cool := 3; cool := 4"
+
+parsing7 = assertBool "undefined identifier" $ isLeft $ parse p
+  where
+  p = "main := a;"
+
+parsing8 = assertBool "undefined identifier" $ isLeft $ parse p
+  where
+  p = "main := \\x. x + y;"
 
 desugar1 = parse' p @?= parse' e
   where
@@ -252,8 +277,7 @@ arith5 = run' p [4] @?= 3
     ++ "fib(n) := if n = 0 then 0 else (if n = 1 then 1 else (fib(n-1) + fib(n-2)))"
 
 prelude0
-  =  "I(x) := x;"
-  ++ "I(x)  := x;"
+  =  "I(x)  := x;"
   ++ "K(x)  := \\y. x;"
   ++ "K1(x) := \\y. y;"
   ++ "S(f)  := \\g. \\x. f(x)(g(x));"

@@ -17,13 +17,6 @@
 FUTURE
 ======
 
-- duplizierte Funktionsdefinitionen -> Fehler
-  -> write Test Case
-- keine main definition -> Fehler
-  -> write Test Case
-- beim 2. Pass: Variable, die weder freie noch gebundene Variable ist -> Fehler
-  (dazu aber Prelude vor dem 2.Pass hinzufügen!)
-  -> write Test Case
 - alpha reduction: wenn eine Funktion lamret,IF,GOTO etc. heißt, dann ihr einen
   neuen Namen geben, damit sie nicht mit der lamret section kollidiert (1st
   pass)
