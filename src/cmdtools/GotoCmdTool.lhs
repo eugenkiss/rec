@@ -16,6 +16,23 @@ explizit sein und @goto eval examples/fac.goto -a 1,2,3@ schreiben.
 \item Pretty Printing von Programmtexten: Dazu einfach @goto print [DATEIPFAD]@
 (z.B. @goto print examples/fac.goto@).
 
+\item Expansion von bestimmten Anweisungen und Entzuckerung: Mit @goto desugar [DATEIPFAD]@
+(z.B. @goto desugar examples/fac.goto@) werden Anweisungen wie @CALL@ oder @RETURN@
+mit ihren entsprechenden primitiveren GOTO-Programmen ersetzt (nicht aber Stack- oder
+Heapanweisungen wie @PUSH@) als auch weitere Vereinfachungen des Programmtexts
+durchgeführt.
+
+\item Übersetzung in fast strikte Untermenge: Mit @goto simplify [DATEIPFAD]@
+(z.B. @goto simplify examples/fac.goto@) werden zunächst die selben Änderungen
+wie mit @goto desugar@ vorgenommen. Zusätzlich werden Bezeichner und Marken
+kanonisiert sowie weitere Transformationen vorgenommen, sodass das erzeugte
+Programm schon sehr einem absolut strikten GOTO-Programm ähnelt aber nicht
+dessen schlechte Laufzeiteigenschaften hat. Mit dieser Programmform arbeitet auch der Auswerter.
+
+\item Übersetzung in strikte Untermenge: Mit @goto strictify [DATEIPFAD]@
+(z.B. @goto strictify examples/fac.goto@) wird das angegebene GOTO-Programm
+in ein absolut striktes GOTO-Programm transformiert.
+
 \item Falls man jemals etwas vergisst hilft der Befehl @goto --help@.
 \end{itemize}
 

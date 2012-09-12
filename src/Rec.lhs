@@ -3,7 +3,7 @@
 REC ist eine minimalistische funktionale Sprache. REC's einziger
 \emph{primitiver} Datentyp ist $\mathbb{N}$, jedoch können selbstverständlich
 Funktionen wie Werte behandelt werden - \emph{higher-order functions} werden
-also unterstützt.  Ein beispielhaftes REC Programm, das die Fakultätsfunktion
+also unterstützt.  Ein beispielhaftes REC-Programm, das die Fakultätsfunktion
 berechnet, sieht folgendermaßen aus:
 
 \begin{myindent}{3mm}
@@ -15,7 +15,7 @@ fac(n) := if n <= 1 then 1 else n * fac(n-1)
 
 In dieser Datei werden wir einen vollständigen Compiler für REC angeben, der
 REC in die Sprache GOTO übersetzt. Dazu werden wir uns eine Repräsentation von
-REC Programmen in Haskell mittels algebraischen Datentypen überlegen, sowie
+REC-Programmen in Haskell mittels algebraischen Datentypen überlegen, sowie
 einen Parser erstellen. Darüber hinaus werden wir einen Pretty Printer für REC
 schreiben und einige zusätzliche Hilfsmethoden. Noch eine Anmerkung: Teile zu
 Beginn dieser Datei sind leicht an ``Implementing a functional programming
@@ -152,7 +152,7 @@ getOpAssociativity op
   | otherwise                                 = error "Impossible!"
 \end{code}
 
-Kommen wir zurück zu REC Programmen. Ein REC Programm ($\l prog \r$) besteht
+Kommen wir zurück zu REC-Programmen. Ein REC-Programm ($\l prog \r$) besteht
 also aus einer oder mehreren Funktionsdefinitionen ($\l fn \r$), die durch ein
 `\lstinline[language=Rec]$;$' getrennt sind. Es wird des Weiteren davon
 ausgegangen, dass genau eine dieser Definitionen die Bezeichnung
@@ -170,7 +170,7 @@ data Exp
   = Num Integer
   | Var Name
   | Ap Name [Exp]
-  | HAp Exp Exp
+  | CAp Exp Exp
   | Lam Int Name Exp
   | If Exp Exp Exp
   deriving (Eq, Show)
@@ -179,7 +179,7 @@ data Exp
 |Num| steht für eine Zahl, |Var| für eine Variable. |Ap| steht für die
 Applikation einer top-level Funktion (wenn sie die korrekte Anzahl an Argumenten
 übergeben bekommen hat). Es wird sich der Name (|Name|) der aufgerufenen
-Funktion, sowie die Argumentenliste (|[Exp]|) gemerkt. |HAp|, dagegen, steht für
+Funktion, sowie die Argumentenliste (|[Exp]|) gemerkt. |CAp|, dagegen, steht für
 die Applikation einer Funktion höherer Ordnung. Nicht überraschend repräsentiert
 der |If|-Konstruktor REC's `\lstinline[language=Rec]$if$'-Konstrukt.
 
@@ -191,6 +191,11 @@ einer eindeutigen Marke. Da Lambda-Ausdrücke aber anonym sind, müssen wir selb
 beim Parsen dafür sorgen, ihnen eindeutige Bezeichnungen zu geben. Mit dem |Int|
 Parameter zählen wir die Lambda-Ausdrücke also einfach in pre-order Reihenfolge
 durch und können somit das Geforderte leisten.
+
+Eine Nebenbemerkung: Der |If|-Konstruktor, als auch der |Ap|-Konstruktor wird
+streng genommen gar nicht benötigt. Statt REC-ifs in passende GOTO-ifs zu
+übersetzen könnten wir auch die Church-Kodierung für Ifs verwenden. Auch
+könnten wir gewöhnliche Funktionsaufrufe immer mit Closureaufrufen ersetzen.
 
 Wie wird nun konkret ein REC Ausdruck durch den algebraischen Datentyp |Exp|
 dargestellt? Wir betrachten ein Beispiel: der REC Ausdruck $x + y$ wird durch
@@ -290,7 +295,7 @@ pprExp (Ap op [a, b])
   space op  = " " ++ op ++ " "
 pprExp (Ap f es)
   = f ++ "(" ++ intercalate ", " (map pprExp es) ++ ")"
-pprExp (HAp e1 e2)
+pprExp (CAp e1 e2)
   = "(" ++ pprExp e1 ++ ")" ++ "(" ++ pprExp e2 ++ ")"
 pprExp (Lam _ x e)
   = "\\" ++ x ++ ". " ++ pprExp e
@@ -503,7 +508,7 @@ pExp = buildExpressionParser opTable pTerm
 
 pTerm :: Parser Exp
 pTerm = choice
-      [ try pHAp
+      [ try pCAp
       , try pLam
       , try pAp
       , try pIf
@@ -556,21 +561,21 @@ auch in dieser Form erlaubt sein:
 \end{myindent}
 
 \begin{code}
-pHAp :: Parser Exp
-pHAp
+pCAp :: Parser Exp
+pCAp
   = choice
     [ try $
       do l <- try pAp <|> try (parens $ pLam) <|> try pVar
          pars <- concat <$> (many1 $ (parens $ commaSep pExp))
-         return $ mkHApChain (reverse (l:pars))
+         return $ mkCApChain (reverse (l:pars))
     , do l <- parens pExp
          e <- parens pExp
-         return $ HAp l e
+         return $ CAp l e
     ]
   where
-  mkHApChain [e]    = e
-  mkHApChain (e:es) = HAp (mkHApChain es) e
-  mkHApChain [] = error "Impossible due to parsing!"
+  mkCApChain [e]    = e
+  mkCApChain (e:es) = CAp (mkCApChain es) e
+  mkCApChain [] = error "Impossible due to parsing!"
 \end{code}
 
 Die letzte Form von syntaktischem Zucker, die wir erlauben wollen, hat
@@ -645,7 +650,7 @@ pAp = do
         Just _  -> do
           args <- commaSep pExp
           _ <- symbol ")"
-          return $ mkHApChain (reverse $ (Ap fn []) : args)
+          return $ mkCApChain (reverse $ (Ap fn []) : args)
     Just n  -> do
       t <- option Nothing $ Just <$> (symbol "(")
       args <-
@@ -659,7 +664,7 @@ pAp = do
       case () of
         _ | n0 == n   -> return $ Ap fn args
           | n0 >  n   -> return $
-              mkHApChain (reverse $ (Ap fn (take n args)) : (drop n args))
+              mkCApChain (reverse $ (Ap fn (take n args)) : (drop n args))
           | otherwise -> do
               let d = n - n0
               (is, rest) <- (splitAt d . (\(_,x,_)->x)) <$> getState
@@ -669,9 +674,9 @@ pAp = do
                   ls' = map Var ls
               return $ mkLamChain fn (args ++ ls') ls is
    where
-   mkHApChain [e]    = e
-   mkHApChain (e:es) = HAp (mkHApChain es) e
-   mkHApChain [] = error "Impossible due to parsing!"
+   mkCApChain [e]    = e
+   mkCApChain (e:es) = CAp (mkCApChain es) e
+   mkCApChain [] = error "Impossible due to parsing!"
    mkLamChain fn as [] [] = Ap fn as
    mkLamChain fn as (l:ls) (i:is) = Lam i l $ mkLamChain fn as ls is
    mkLamChain _ _ _ _ = error "Impossible!"
@@ -701,12 +706,12 @@ pNum = liftM Num (natural <?> "number")
 \section{Übersetzung nach GOTO}
 
 In diesem Teil wird die Generierung eines semantisch äquivalenten GOTO-Programms
-aus einem gegebenen REC Programm beschrieben. Es wird versucht die Überlegungen
+aus einem gegebenen REC-Programm beschrieben. Es wird versucht die Überlegungen
 hinter dem Nutzen einer jeden definierten Funktion hinsichtlich des Ziels der
 Übersetzung immerhin knapp darzustellen. Doch zuerst sollen einige
 Hilfsfunktionen eingeführt werden.
 
-|getDefNames| liefert bei Eingabe eines REC Programms einfach die Namensliste
+|getDefNames| liefert bei Eingabe eines REC-Programms einfach die Namensliste
 der im Programm definierten Funktionen. Analog liefert |getDefRhss| eine Liste
 aller Ausdrücke die sich in den Funktionskörpern befinden und zwar entspricht
 ein Listeneintrag der rechten Seite einer Funktionsdefinition. `Rhss` steht
@@ -735,7 +740,7 @@ getCalledFnNames (Ap fn args:rest)
   = fn : getCalledFnNames args ++ getCalledFnNames rest
 getCalledFnNames (Lam _ _ e:rest)
   = getCalledFnNames [e] ++ getCalledFnNames rest
-getCalledFnNames (HAp e1 e2:rest)
+getCalledFnNames (CAp e1 e2:rest)
   = getCalledFnNames [e1] ++ getCalledFnNames [e2] ++ getCalledFnNames rest
 getCalledFnNames (If e1 e2 e3:rest)
   = getCalledFnNames [e1, e2, e3] ++ getCalledFnNames rest
@@ -756,13 +761,13 @@ getNames (Ap fn args:rest)
   = fn : getNames args ++ getNames rest
 getNames (Lam _ x e:rest)
   = x : getNames [e] ++ getNames rest
-getNames (HAp e1 e2:rest)
+getNames (CAp e1 e2:rest)
   = getNames [e1] ++ getNames [e2] ++ getNames rest
 getNames (If e1 e2 e3:rest)
   = getNames [e1, e2, e3] ++ getNames rest
 \end{code}
 
-|findDef| liefert bei Eingabe eines Funktionsnamens und eines REC Programms die
+|findDef| liefert bei Eingabe eines Funktionsnamens und eines REC-Programms die
 vollständige Definition der gesuchten Funktion. Im Grunde wird |findDef| nur
 benötigt, um die Definition der `\lstinline[language=Rec]$main$` Funktion zu
 finden, da ja nicht vorgeschrieben ist, an welcher Stelle im Quellcode sich die
@@ -940,7 +945,7 @@ genLamSec fnNames ((_, topargs, Ap _ args) : rest)
   = let t1 = genLamSec fnNames $ map (\x->("dontcare", topargs, x)) args
         t2 = genLamSec fnNames rest
     in  t1 <> t2
-genLamSec fnNames ((_, topargs, HAp e1 e2) : rest)
+genLamSec fnNames ((_, topargs, CAp e1 e2) : rest)
   = let t1 = genLamSec fnNames [("dontcare", topargs, e1)]
         t2 = genLamSec fnNames [("dontcare", topargs, e2)]
         t3 = genLamSec fnNames rest
@@ -1022,7 +1027,7 @@ genLamRetSec (Ap _ args : rest)
   = let t1 = genLamRetSec args
         t2 = genLamRetSec rest
     in  t1 <> t2
-genLamRetSec (HAp e1 e2 : rest)
+genLamRetSec (CAp e1 e2 : rest)
   = let t1 = genLamRetSec [e1]
         t2 = genLamRetSec [e2]
         t3 = genLamRetSec rest
@@ -1156,12 +1161,12 @@ geschehen können, müssen die Variablen `\lstinline[language=Goto]$a1,a2,...$'
 und `\lstinline[language=Goto]$h1,h2,...$' resetted werden.
 
 \begin{code}
-genExpSeq fnNames paramMap freeMap (HAp e1 e2 : rest)
+genExpSeq fnNames paramMap freeMap (CAp e1 e2 : rest)
   =  mempty
   <> genExpSeq fnNames paramMap freeMap [e2]
   <> genExpSeq fnNames paramMap freeMap [e1]
   <> G.Pop "t" -- return value, i.e. heap adress of closure
-  <> G.CallClosure (G.Var "t") 1
+  <> G.CallClosure (G.Var "t")
   <> (if (M.size freeMap) /= 0
          then G.Peek "h0" (G.AOp "+" (G.Var "fp") (G.Num 2)) -- heap adress
          else mempty)
@@ -1362,7 +1367,7 @@ genExtArgsSection defs
 \end{code}
 
 Endlich nun können wir alle Teile zusammenfügen und die Funktion |genGoto|
-definieren, die ein beliebiges REC Programm in ein semantisch äquivalentes
+definieren, die ein beliebiges REC-Programm in ein semantisch äquivalentes
 GOTO Programm übersetzt:
 
 \begin{code}
@@ -1382,7 +1387,7 @@ genGoto defs = mempty
 \end{code}
 
 Zum Abschluss wollen wir uns die vollständige Übersetzung nach GOTO des
-folgenden REC Programms anschauen:
+folgenden REC-Programms anschauen:
 
 \begin{myindent}{3mm}
 \begin{lstlisting}[language=Rec]
@@ -1489,10 +1494,10 @@ lamret: IF (cp = 1) THEN
 In diesem Abschnitt werden die Funktionen zur direkten Auswertung eines REC
 Programms definiert.
 
-|eval| erhält als Eingabe ein REC Program vom Typ |Program| und eine Liste von
+|eval| erhält als Eingabe ein REC-Program vom Typ |Program| und eine Liste von
 Eingabeparametern. Nach erfolgreicher Auswertung wird, falls das Programm nicht
 in eine Endlosschleife geraten ist, die Ergebniszahl zurückgegeben. Und zwar
-geschieht die Auswertung so: Zuerst wird aus dem REC Programm das
+geschieht die Auswertung so: Zuerst wird aus dem REC-Programm das
 entsprechende GOTO Programm generiert und anschließend wird das GOTO Programm
 mit dem GOTO Auswerter ausgewertet.
 
@@ -1502,7 +1507,7 @@ eval p input = G.eval (genGoto p) input
 \end{code}
 
 |run| verknüpft die beiden Funktionen |parse| und |eval|. Im Gegensatz zu
-|eval| erwartet |run| also ein REC Programm im Klartext und liefert entweder
+|eval| erwartet |run| also ein REC-Programm im Klartext und liefert entweder
 die Ergebniszahl oder einen Fehlernachricht. |run'| dagegen liefert bei
 jeglichem (Parse-)Fehler als Ergebnis die Zahl $-1$.
 

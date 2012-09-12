@@ -72,7 +72,7 @@ data Program
   | PushHeap AExp
   | PeekHeap VId AExp
   | MakeClosure Int [AExp]
-  | CallClosure AExp Int
+  | CallClosure AExp
   deriving Eq
 
 data AExp
@@ -148,8 +148,8 @@ pprint' (MakeClosure p [])
   = text "MAKE_CLOSURE" <+> text (show p)
 pprint' (MakeClosure p args)
   = text "MAKE_CLOSURE" <+> hcat (punctuate comma $ (text . show) p : map (text . show) args)
-pprint' (CallClosure a n)
-  = text "CALL_CLOSURE" <+> text (show a) PP.<> text "," <+> text (show n)
+pprint' (CallClosure a)
+  = text "CALL_CLOSURE" <+> text (show a)
 \end{code}
 
 %TODO: print without redundant parantheses
@@ -286,9 +286,7 @@ pCallClosure :: Parser Program
 pCallClosure
   = do reserved "CALL_CLOSURE"
        aexp <- pAExp
-       _ <- symbol ","
-       n <- integer
-       return $ CallClosure aexp (fromInteger n)
+       return $ CallClosure aexp
 
 pMakeClosure :: Parser Program
 pMakeClosure
@@ -936,7 +934,7 @@ Here come the augmented constructors.
 \end{code}
 
 \begin{code}
-  go (CallClosure aexp n) = do
+  go (CallClosure aexp) = do
     r <- newRId
     returnVal <- newVId
     temp <- newVId
@@ -955,12 +953,10 @@ Here come the augmented constructors.
           <> Pop temp -- old heap adress
           <> Pop temp -- old return adress
           <> Pop "fp" -- reassign old fp
-          <> mkPopSequence n temp -- pop old args + ret addr
+          <> Pop temp -- pop old args + ret addr
          -- <> Assign "fp" (Var "sp") -- reset fp!
           <> Push (Var returnVal)
           )
-    where
-    mkPopSequence n t = Seq $ replicate n (Pop t)
 \end{code}
 
 \begin{code}
@@ -1051,24 +1047,24 @@ names.
 getVIds :: Program -> [VId]
 getVIds = nub . go
   where
-  go (Halt)              = []
-  go (Goto _)            = []
-  go (Assign v aexp)     = v : getVIdsInAExp aexp
-  go (Loop aexp p)       = getVIdsInAExp aexp ++ go p
-  go (While bexp p)      = getVIdsInBExp bexp ++ go p
-  go (If bexp p)         = getVIdsInBExp bexp ++ go p
-  go (IfElse bexp p1 p2) = getVIdsInBExp bexp ++ go p1 ++ go p2
-  go (Push aexp)         = getVIdsInAExp aexp
-  go (Pop v)             = [v]
-  go (Peek v aexp)       = v : getVIdsInAExp aexp
-  go (Call _ _)          = []
-  go (Return)            = []
-  go (PushHeap aexp)     = getVIdsInAExp aexp
-  go (PeekHeap v aexp)   = v : getVIdsInAExp aexp
-  go (MakeClosure _ args)  = concatMap getVIdsInAExp args
-  go (CallClosure aexp _) = getVIdsInAExp aexp
-  go (Label _ p)         = go p
-  go (Seq ps)            = concatMap go ps
+  go (Halt)               = []
+  go (Goto _)             = []
+  go (Assign v aexp)      = v : getVIdsInAExp aexp
+  go (Loop aexp p)        = getVIdsInAExp aexp ++ go p
+  go (While bexp p)       = getVIdsInBExp bexp ++ go p
+  go (If bexp p)          = getVIdsInBExp bexp ++ go p
+  go (IfElse bexp p1 p2)  = getVIdsInBExp bexp ++ go p1 ++ go p2
+  go (Push aexp)          = getVIdsInAExp aexp
+  go (Pop v)              = [v]
+  go (Peek v aexp)        = v : getVIdsInAExp aexp
+  go (Call _ _)           = []
+  go (Return)             = []
+  go (PushHeap aexp)      = getVIdsInAExp aexp
+  go (PeekHeap v aexp)    = v : getVIdsInAExp aexp
+  go (MakeClosure _ args) = concatMap getVIdsInAExp args
+  go (CallClosure aexp)   = getVIdsInAExp aexp
+  go (Label _ p)          = go p
+  go (Seq ps)             = concatMap go ps
 \end{code}
 
 Rename all occurences of 'from' as a variable identifier to 'to' in the given
@@ -1105,24 +1101,24 @@ AST.
 \begin{code}
 renameVId :: VId -> VId -> Program -> Program
 renameVId from to ast = case ast of
-  Halt              -> Halt
-  Goto l            -> Goto l
-  Assign v aexp     -> Assign (r v) (rAExp aexp)
-  Loop aexp p       -> Loop (rAExp aexp) (rVId p)
-  While bexp p      -> While (rBExp bexp) (rVId p)
-  If bexp p         -> If (rBExp bexp) (rVId p)
-  IfElse bexp p1 p2 -> IfElse (rBExp bexp) (rVId p1) (rVId p2)
-  Push aexp         -> Push (rAExp aexp)
-  Pop v             -> Pop (r v)
-  Peek v aexp       -> Peek (r v) (rAExp aexp)
-  Call f n          -> Call f n
-  Return            -> Return
-  PushHeap aexp     -> PushHeap (rAExp aexp)
-  PeekHeap v aexp   -> PeekHeap (r v) (rAExp aexp)
-  MakeClosure p args  -> MakeClosure p (map rAExp args)
-  CallClosure aexp n -> CallClosure (rAExp aexp) n
-  Label l p         -> Label l (rVId p)
-  Seq ps            -> Seq (map rVId ps)
+  Halt               -> Halt
+  Goto l             -> Goto l
+  Assign v aexp      -> Assign (r v) (rAExp aexp)
+  Loop aexp p        -> Loop (rAExp aexp) (rVId p)
+  While bexp p       -> While (rBExp bexp) (rVId p)
+  If bexp p          -> If (rBExp bexp) (rVId p)
+  IfElse bexp p1 p2  -> IfElse (rBExp bexp) (rVId p1) (rVId p2)
+  Push aexp          -> Push (rAExp aexp)
+  Pop v              -> Pop (r v)
+  Peek v aexp        -> Peek (r v) (rAExp aexp)
+  Call f n           -> Call f n
+  Return             -> Return
+  PushHeap aexp      -> PushHeap (rAExp aexp)
+  PeekHeap v aexp    -> PeekHeap (r v) (rAExp aexp)
+  MakeClosure p args -> MakeClosure p (map rAExp args)
+  CallClosure aexp   -> CallClosure (rAExp aexp)
+  Label l p          -> Label l (rVId p)
+  Seq ps             -> Seq (map rVId ps)
   where
   rVId  = renameVId from to
   rAExp = renameVIdInAExp from to
@@ -1199,24 +1195,24 @@ Analyze the AST and return a list without duplicates of all used label names.
 getLIds :: Program -> [LId]
 getLIds = nub . go
   where
-  go (Halt)           = []
-  go (Goto l)         = [l]
-  go (Assign _ _)     = []
-  go (Loop _ p)       = go p
-  go (While _ p)      = go p
-  go (If _ p)         = go p
-  go (IfElse _ p1 p2) = go p1 ++ go p2
-  go (Label l p)      = l : go p
-  go (Seq ps)         = concatMap go ps
-  go (Push _)         = []
-  go (Pop _)          = []
-  go (Peek _ _)       = []
-  go (Call l _)       = [l]
-  go (Return)         = []
-  go (PushHeap _)     = []
-  go (PeekHeap _ _)   = []
-  go (MakeClosure _ _)  = []
-  go (CallClosure _ _) = []
+  go (Halt)            = []
+  go (Goto l)          = [l]
+  go (Assign _ _)      = []
+  go (Loop _ p)        = go p
+  go (While _ p)       = go p
+  go (If _ p)          = go p
+  go (IfElse _ p1 p2)  = go p1 ++ go p2
+  go (Label l p)       = l : go p
+  go (Seq ps)          = concatMap go ps
+  go (Push _)          = []
+  go (Pop _)           = []
+  go (Peek _ _)        = []
+  go (Call l _)        = [l]
+  go (Return)          = []
+  go (PushHeap _)      = []
+  go (PeekHeap _ _)    = []
+  go (MakeClosure _ _) = []
+  go (CallClosure _)   = []
 \end{code}
 
 

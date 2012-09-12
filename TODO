@@ -1,14 +1,6 @@
-- CallClosure Anzahl der Argumente ist überflüssig -> entfernen, da lamba-Ausdruck
-  immer nur einen  Parameter hat bei uns
-- HAp zu CAp für Closure Application
-- Irgendwo hinschreiben, dass If Konstruktor und Ap eigenltich nicht zwingend benötigt
-  werden, da If mit Chruch und statt Ap Immer HAp benutzt werden könnte.
 - Code aufräumen ab GOTO!
 - Mit Grep nach TODO's suchen!
 - Lint drüber laufen lassen
-
-- find explanation of encoding of lists like I use, so that I can explain it
-  with my own words.
 
 - write evaluator that spits out configurations as json list,
   so that I can write a javascript app (maybe even dart or kotlin?)
