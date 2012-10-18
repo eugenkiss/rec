@@ -778,7 +778,7 @@ vollständige Definition der gesuchten Funktion. Im Grunde wird |findDef| nur
 benötigt, um die Definition der `\lstinline[language=Rec]$main$` Funktion zu
 finden, da ja nicht vorgeschrieben ist, an welcher Stelle im Quellcode sich die
 Definition befinden muss. Da beim Parsen schon darauf geachtet wird, ob eine
-`\lstinline[language=Rec]|main|' Funktion vorhanden ist, ist ein Nichtfinden
+`\lstinline[language=Rec]$main$' Funktion vorhanden ist, ist ein Nichtfinden
 unmöglich.
 
 \begin{code}
@@ -1083,8 +1083,8 @@ genExpSeq fnNames paramMap freeMap (Num n : rest)
 
 Variablen werden ebenfalls einfach in den Stack gepusht. Dabei muss unterschieden
 werden, ob es sich um eine gebundene oder freie Instanz handelt. Je nachdem
-wird ein `\lstinline[language=Goto]|a$_x$|' oder ein
-`\lstinline[language=Goto]|h$_x$|' in den Stack gepusht. Wegen name shadowing
+wird ein `\lstinline[language=Goto]Ta$_x$T' oder ein
+`\lstinline[language=Goto]Th$_x$T' in den Stack gepusht. Wegen name shadowing
 haben gebundene Bezeichner Vorrang:
 
 \begin{code}
